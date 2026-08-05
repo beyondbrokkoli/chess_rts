@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stddef.h> // Required for offsetof()
 
-#include "shared_structs.h"
+#include "../protocol/shared_structs.h"
 
 #if defined(_WIN32)
     #define EXPORT __declspec(dllexport)

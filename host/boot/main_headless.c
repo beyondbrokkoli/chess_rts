@@ -13,7 +13,7 @@
 
 // 3.5. CORE HOST DOMAIN
 // Provides EXPORT, SLEEP_MS, and atomic macros required by the network backend
-#include "sys_sync.c"
+#include "../ipc/sys_sync.c"
 
 // 5. HEADLESS ORCHESTRATION
 // Simple stub for the shutdown hook requested by headless_api.lua
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     lua_setglobal(Ls, "arg");
 
     printf("[C-CORE] Routing to scripts/bot.lua...\n");
-    if (luaL_dofile(Ls, "scripts/bot.lua") != LUA_OK) {
+    if (luaL_dofile(Ls, "tools/bot.lua") != LUA_OK) {
         printf("\n[LUA FATAL ERROR] %s\n", lua_tostring(Ls, -1));
         lua_close(Ls);
         return 1;
