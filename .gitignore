@@ -1,0 +1,9 @@
+*.log
+*.bin
+venv
+storage
+.qdrant-initialized
+start.sh
+start.bat
+logs
+README.md
