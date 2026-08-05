@@ -1,7 +1,7 @@
+require("runtime.boot.path_weaver")
 -- network/main_headless.lua
 io.stdout:setvbuf("no")
 -- When run natively, we need paths. When towed, staging/main.lua sets them.
-package.path = "./?.lua;./lua/?.lua;./network/?.lua;./scripts/?.lua;" .. package.path
 
 local ffi = require("ffi")
 

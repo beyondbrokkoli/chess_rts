@@ -1,6 +1,6 @@
+require("runtime.boot.path_weaver")
 -- scripts/bot.lua
 io.stdout:setvbuf("no")
-package.path = "./staging/?.lua;./ssot/?.lua;./?.lua;./lua/?.lua;./network/?.lua;./scripts/?.lua;" .. package.path
 
 local ffi = require("ffi")
 

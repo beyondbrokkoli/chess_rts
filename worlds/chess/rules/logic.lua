@@ -1,6 +1,6 @@
 require("global")
-require("game/move")
-require("game/attack")
+require("move")
+require("attack")
 local directions = {}
 directions[3] = {2,4,6,8}
 directions[4] = {1,3,5,7}

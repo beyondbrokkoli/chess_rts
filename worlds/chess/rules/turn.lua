@@ -1,5 +1,5 @@
 require("global")
-require("game/logic")
+require("logic")
 local function endless(pos,from,to)
 	if not (pos[to] == 0) then --taking a piece
 		return false

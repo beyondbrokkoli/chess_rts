@@ -1,8 +1,8 @@
 -- network/net_pump.lua
 local ffi = require("ffi")
 local net = require("network")
-local history_buffer = require("network.history_buffer")
-local wire_codec = require("network.wire_codec")
+local history_buffer = require("history_buffer")
+local wire_codec = require("wire_codec")
 
 local Pump = {}
 

@@ -1,5 +1,5 @@
-require("display/graphics")
-require("display/piecemap")
+require("graphics")
+require("piecemap")
 require("global")
 function Board(pos)
 	local d = {}

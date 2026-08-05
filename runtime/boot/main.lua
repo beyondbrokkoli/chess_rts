@@ -1,6 +1,6 @@
+require("runtime.boot.path_weaver")
 -- staging/main.lua
 io.stdout:setvbuf("no")
-package.path = "./staging/?.lua;./ssot/?.lua;./?.lua;./lua/?.lua;./network/?.lua;./scripts/?.lua;" .. package.path
 
 local ffi = require("ffi")
 local core_abi = require("core_abi")
@@ -46,7 +46,7 @@ local Fixed = require("fixed_math")
 local TenantRegistry = require("tenant_registry")
 local graphics_mod = require("graphics_pipeline")
 local manifest = require("pipeline_manifest")
-local Teardown = require("engine.teardown")
+local Teardown = require("teardown")
 
 -- [SHATTER CHUNKS]
 local Boot = require("weaver_boot")

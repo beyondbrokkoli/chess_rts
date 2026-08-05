@@ -1,9 +1,9 @@
-require("display/board")
-require("display/interface")
-require("display/colors")
-require("game/input")
-require("game/game")
-require("game/standard")
+require("board")
+require("interface")
+require("colors")
+require("input")
+require("game")
+require("standard")
 require("global")
 
 -- Window
