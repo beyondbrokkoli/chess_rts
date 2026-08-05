@@ -1,0 +1,115 @@
+// c/shared_structs.h - PURE BRUTALIST NETCODE
+#pragma once
+#include <stdint.h>
+#include <stddef.h> // For size_t
+
+// ENGINE CONSTANTS (The Enum Hack)
+// By using enums instead of #define, LuaJIT FFI natively parses
+// them for array bounds and exposes them via ffi.C.
+enum {
+    CFG_MAX_PLAYERS = 2,
+    CFG_HISTORY_LEN = 60,      // [CHANGED] Was 120. Now tied to LOOKAHEAD_CAP to fit MTU.
+    CFG_RING_SIZE = 512,       // Unchanged. The Deep Time Machine.
+    CFG_MAX_PACKET_SIZE = 4096,
+
+    FRAME_STATE_EMPTY = 0,
+    FRAME_STATE_PREDICTED = 1,
+    FRAME_STATE_CONFIRMED = 2
+};
+
+// WIRE FORMATS (Packed for the Network)
+#pragma pack(push, 1)
+
+typedef struct {
+    uint32_t target_pos;
+    uint16_t target_id;
+    uint8_t opcode;
+    uint8_t flags;
+} PlayerCommand;
+
+typedef struct {
+    // --- UNIVERSAL ROUTING HEADER ---
+    uint64_t session_token; // Bytes 0-7
+    uint8_t player_id;      // Byte 8
+    uint8_t is_ping;        // Byte 9
+    // --------------------------------
+    uint8_t history_count;
+    uint8_t _reserved;
+    uint32_t frame_tick;
+    uint32_t checksum_tick;
+    uint32_t state_checksum;
+    uint32_t base_tick;
+    uint32_t peer_acks[CFG_MAX_PLAYERS];
+    PlayerCommand commands[CFG_HISTORY_LEN][2];
+} LockstepPacket;
+
+typedef struct {
+    // --- UNIVERSAL ROUTING HEADER ---
+    uint64_t session_token; // Bytes 0-7
+    uint8_t player_id;      // Byte 8
+    uint8_t is_ping;        // Byte 9
+    // --------------------------------
+    uint16_t _reserved16;   // Bytes 10-11
+    uint32_t frame_tick;
+    uint32_t checksum_tick;
+    uint32_t state_checksum;
+    uint32_t base_tick;
+    uint32_t padding[3];    // Fills out the remaining bytes to equal exactly 40
+} IcePunchPacket;
+
+#pragma pack(pop)
+
+// ENGINE MEMORY FORMATS & LAB STATE (Aligned for CPU Cache)
+typedef struct {
+    uint16_t len;
+    uint8_t data[CFG_MAX_PACKET_SIZE];
+} RxPacket;
+
+typedef struct __attribute__((aligned(4))) {
+    uint32_t tick;
+    uint32_t state_checksum;
+    uint32_t remote_checksum;
+    uint8_t state;
+    uint8_t remote_peer_id;
+    uint16_t _pad;
+    PlayerCommand commands[CFG_MAX_PLAYERS][2];
+} NetworkFrame;
+
+typedef struct __attribute__((aligned(64))) {
+    uint32_t head_tick;
+    uint32_t confirmed_tick;
+    uint32_t rollback_target;
+    uint8_t is_rollback_active;
+    uint8_t _pad[3];
+    NetworkFrame frames[CFG_RING_SIZE];
+} RollbackBuffer;
+
+typedef struct {
+    int32_t x;
+    int32_t y;
+    uint32_t status;
+} LabPlayerEntity;
+
+typedef struct {
+    uint32_t global_tick;
+    LabPlayerEntity players[CFG_MAX_PLAYERS];
+} LabWorldState;
+
+// NETWORK API (Bridge to vx_net.c)
+int vx_net_host(int port);
+int vx_net_connect(uint8_t peer_id, const char* ip, int port);
+void vx_net_set_session(uint64_t token);
+void vx_net_set_player_id(uint8_t id);
+int vx_net_recv_all(RxPacket* out_buffer, int max_count);
+void vx_net_send_to(void* data, size_t len, uint8_t target_peer);
+void vx_net_set_relay_ip(const char* ip);
+uint32_t vx_net_hash_state(const void* data, size_t length, uint32_t initial_hash);
+int vx_net_stun_punch(const char* stun_server_ip, int stun_port, char* out_ip, int* out_port);
+void vx_net_shutdown(void);
+
+// COMPILER-ENFORCED INVARIANTS (Tenet VI: Fail Fast and Loud)
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    _Static_assert(sizeof(PlayerCommand) == 8, "[FATAL] PlayerCommand must be exactly 8 bytes!");
+    _Static_assert(sizeof(IcePunchPacket) == 40, "[FATAL] IcePunchPacket must be exactly 40 bytes!");
+    _Static_assert(_Alignof(LockstepPacket) == 1, "[FATAL] LockstepPacket is not 1-byte aligned!");
+#endif

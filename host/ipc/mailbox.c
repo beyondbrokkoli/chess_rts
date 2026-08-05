@@ -1,0 +1,43 @@
+/* host/mailbox.c */
+
+EXPORT void vx_init_mailbox(void) {
+    atomic_init(&g_engine.mailbox.ready_index,  0);
+    atomic_init(&g_engine.mailbox.is_running,   1);
+    atomic_init(&g_engine.mailbox.lua_finished,  0);
+    atomic_init(&g_engine.mailbox.active_window, 0);
+
+    for (int i = 0; i < MAX_WINDOWS; i++) {
+        atomic_init(&g_engine.mailbox.tenants[i].vk_instance,    NULL);
+        atomic_init(&g_engine.mailbox.tenants[i].vk_surface,     NULL);
+        atomic_init(&g_engine.mailbox.tenants[i].glfw_cmd,       CMD_IDLE);
+        atomic_init(&g_engine.mailbox.tenants[i].glfw_arg_w,     0);
+        atomic_init(&g_engine.mailbox.tenants[i].glfw_arg_h,     0);
+        atomic_init(&g_engine.mailbox.tenants[i].last_key_pressed, 0);
+        atomic_init(&g_engine.mailbox.tenants[i].wasd_mask,      0);
+        atomic_init(&g_engine.mailbox.tenants[i].mouse_dx,       0.0f);
+        atomic_init(&g_engine.mailbox.tenants[i].mouse_dy,       0.0f);
+        atomic_init(&g_engine.mailbox.tenants[i].mouse_x,        0.0f);
+        atomic_init(&g_engine.mailbox.tenants[i].mouse_y,        0.0f);
+        atomic_init(&g_engine.mailbox.tenants[i].click_x,        -1.0f);
+        atomic_init(&g_engine.mailbox.tenants[i].click_y,        -1.0f);
+        atomic_init(&g_engine.mailbox.tenants[i].mouse_left,     0);
+        atomic_init(&g_engine.mailbox.tenants[i].mouse_right,    0);
+        atomic_init(&g_engine.mailbox.tenants[i].mouse_captured, 0);
+        atomic_init(&g_engine.mailbox.tenants[i].window_resized, 0);
+        atomic_init(&g_engine.mailbox.tenants[i].win_w,          1280);
+        atomic_init(&g_engine.mailbox.tenants[i].win_h,          720);
+        atomic_init(&g_engine.mailbox.tenants[i].key_space,      0);
+    }
+
+    atomic_init(&g_ring.locked_mask, 0);
+    for (int i = 0; i < MAX_WINDOWS; i++) {
+        atomic_init(&g_wsi_state[i], 0);
+        atomic_init(&g_render_busy[i], 0);
+        atomic_init(&g_transfer_busy[i], 0);
+        atomic_init(&g_ring.ready_idx[i], -1);
+        atomic_init(&g_ring.local_read[i], -1);
+        for (int f = 0; f < 10; f++) {
+            g_ring.active_ring_slots[i][f] = -1;
+        }
+    }
+}

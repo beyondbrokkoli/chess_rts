@@ -1,0 +1,16 @@
+return function(ctx)
+    local specs = {
+        {
+            name = "mat4_t", align = 16,
+            c_only = false, vk_shield = false, wire_format = false, force_align = false, glsl_std430 = true,
+            members = {
+                { type = "float", name = "m", count = 16 }
+            }
+        }
+    }
+
+    for _, s in ipairs(specs) do
+        s.domain = "sim"
+        table.insert(ctx.specs, s)
+    end
+end

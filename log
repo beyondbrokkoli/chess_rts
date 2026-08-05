@@ -1,0 +1,37 @@
+AzureAD+HalimOmarZaghdoudi@DESKTOP-BD3FFTI MINGW64 ~/isometric
+$ luajit build/ctx_build.lua win
+ WEAVER V2 HYBRID BUILD AUTOMATION
+ Target Platform: WIN
+ |- [HARNESS] Running Invariant Asserts...
+ |- [HARNESS] All system-critical invariants passed.
+[1/4A] Generating Domain-Specific C Headers...
+ |- Domain headers generated successfully in gen/.
+[1/4B] Generating GLSL SSoT...
+ |- SSoT synchronization complete.
+
+[2/4] Compiling GLSL Shaders to SPIR-V...
+ |- Compiled: bin/render_vert.spv
+ |- Compiled: bin/render_frag.spv
+ |- Shader phase complete.
+
+[3/3] Compiling Double Paradigm C-Core...
+ |- Compiling pure netcode (vx_net.dll)...
+ |- Compiling host engine (boot.exe)...
+ |- Windows build complete. Packing dependencies...
+[4/4] Compiling Headless Host (Unity Build)...
+In file included from host/main_headless.c:16:
+host/sys_sync.c:36:9: error: unknown type name 'pthread_t'; did you mean '_threadid'?
+   36 | typedef pthread_t vmath_thread_t;
+      |         ^~~~~~~~~
+      |         _threadid
+host/sys_sync.c: In function 'vx_spin_wait':
+host/sys_sync.c:46:13: error: implicit declaration of function 'SwitchToThread' [-Wimplicit-function-declaration]
+   46 |             SwitchToThread();
+      |             ^~~~~~~~~~~~~~
+host/sys_sync.c:28:26: error: implicit declaration of function 'Sleep'; did you mean 'sleep'? [-Wimplicit-function-declaration]
+   28 |     #define SLEEP_MS(ms) Sleep(ms)
+      |                          ^~~~~
+host/sys_sync.c:51:9: note: in expansion of macro 'SLEEP_MS'
+   51 |         SLEEP_MS(1); // Tier 3: Milliseconds
+      |         ^~~~~~~~
+ [WARNING] Windows headless compilation failed.

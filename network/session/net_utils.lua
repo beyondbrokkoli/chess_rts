@@ -1,0 +1,278 @@
+local ffi = require("ffi")
+local json_util = require("json_util")
+local cfg_net = require("config_net")
+local net = require("network")
+local NetUtils = {}
+
+-- 1. DUPLICATE THE OS TIMERS HERE
+local function sys_sleep(ms)
+    if jit.os == "Windows" then
+        ffi.C.Sleep(ms)
+    else
+        ffi.C.usleep(ms * 1000)
+    end
+end
+
+local get_time_hires
+if jit.os == "Windows" then
+    local kernel32 = ffi.load("kernel32")
+    local freq = ffi.new("int64_t[1]")
+    kernel32.QueryPerformanceFrequency(freq)
+    local inv_freq = 1.0 / tonumber(freq[0])
+    get_time_hires = function()
+        local count = ffi.new("int64_t[1]")
+        kernel32.QueryPerformanceCounter(count)
+        return tonumber(count[0]) * inv_freq
+    end
+else
+    local CLOCK_MONOTONIC = 1
+    get_time_hires = function()
+        local ts = ffi.new("timespec")
+        ffi.C.clock_gettime(CLOCK_MONOTONIC, ts)
+        return tonumber(ts.tv_sec) + (tonumber(ts.tv_nsec) * 1e-9)
+    end
+end
+
+local function http_post(url, json_payload, local_port)
+    -- Dynamically resolve the temp directory based on the OS
+    local tmp_dir = (jit.os == "Windows") and (os.getenv("TEMP") or ".") or "/tmp"
+    local tmp_file = string.format("%s/mm_payload_%d.json", tmp_dir, local_port)
+
+    -- Improved assert message to catch exactly where it attempts to write if it fails again
+    local f = assert(io.open(tmp_file, "w"), string.format("Failed to open temp file at: %s", tmp_file))
+    f:write(json_payload)
+    f:close()
+
+    local cmd = string.format('curl -s -X POST -H "Content-Type: application/json" -d "@%s" %s', tmp_file, url)
+    local handle = io.popen(cmd)
+    local response = handle:read("*a")
+    handle:close()
+
+    os.remove(tmp_file)
+    return response
+end
+
+local function http_get(url)
+    local cmd = string.format('curl -s "%s"', url)
+    local f = io.popen(cmd)
+    if not f then return "" end
+    local res = f:read("*a")
+    f:close()
+    return res
+end
+
+function NetUtils.get_local_ip()
+    local cmd = ""
+    if jit.os == "Windows" then
+        cmd = 'powershell -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike \'127.*\' -and $_.IPAddress -notlike \'169.254.*\' } | Select-Object -First 1).IPAddress"'
+    else
+        cmd = "ip route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i==\"src\") print $(i+1)}'"
+    end
+    local f = io.popen(cmd)
+    if not f then return "127.0.0.1" end
+    local res = f:read("*a")
+    f:close()
+    res = res:gsub("%s+", "")
+    if not res:match("^%d+%.%d+%.%d+%.%d+$") then return "127.0.0.1" end
+    return res
+end
+
+local function extract_true_64bit_token(json_string)
+    local token_digits = json_string:match('"session_token"%s*:%s*(%d+)')
+    assert(token_digits, "FATAL: Could not locate session_token digits in JSON payload")
+    local val = ffi.cast("uint64_t", 0)
+    for i = 1, #token_digits do
+        local byte = string.byte(token_digits, i)
+        if byte >= 48 and byte <= 57 then
+            val = (val * 10) + (byte - 48)
+        else
+            break
+        end
+    end
+    return val
+end
+
+-- THE HEADLESS BOOTSTRAPPER
+function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby_id)
+    print(string.format("[DEBUG-NET] Bootstrapping Port: %d | Local IP: %s", local_port, tostring(my_local_ip)))
+
+    -- [!] FIX 1: We must actually bind the local UDP socket!
+    if not net.Host(local_port) then
+        print(string.format("[FATAL] Failed to bind local UDP port %d. Is it already in use?", local_port))
+        os.exit(1)
+    end
+    print("[DEBUG-NET] Local UDP socket successfully bound.")
+
+    print(string.format("[DEBUG-NET] Firing STUN Punch to %s:%d...", cfg_net.STUN_SERVER, cfg_net.STUN_PORT))
+    local stun_ok, my_pub_ip, my_pub_port = net.StunPunch(cfg_net.STUN_SERVER, cfg_net.STUN_PORT)
+    if not stun_ok then
+        print("[DEBUG-NET] STUN Punch timeout/fail. Falling back to Local IP.")
+        my_pub_ip, my_pub_port = my_local_ip, local_port
+    else
+        print(string.format("[DEBUG-NET] STUN Success: %s:%d", tostring(my_pub_ip), my_pub_port))
+    end
+
+    local payload = json_util.encode({
+        public_ip = my_pub_ip, public_port = my_pub_port,
+        local_ip = my_local_ip, local_port = local_port,
+        target_size = cfg_net.MAX_PLAYERS
+    })
+    print(string.format("[DEBUG-NET] Payload built (Target Size: %s) targeting URL: %s", tostring(cfg_net.MAX_PLAYERS), cfg_net.MATCHMAKER_URL))
+    print("[DEBUG-NET] Payload JSON: " .. payload)
+
+    local lobby_id = target_lobby_id
+    local session_token = nil
+
+    if not lobby_id or lobby_id == "" then
+        print("[DEBUG-NET] Requesting new Lobby ID from Matchmaker...")
+        local response = http_post(cfg_net.MATCHMAKER_URL .. "/host", payload, local_port)
+        print("[DEBUG-NET] Matchmaker POST /host Response: " .. tostring(response))
+
+        local decoded = json_util.decode(response)
+        if not decoded or not decoded.lobby_id then
+            print("[FATAL] Matchmaker returned invalid JSON or missing lobby_id.")
+            os.exit(1)
+        end
+
+        lobby_id = decoded.lobby_id
+        -- The Bash swarm script greps for this exact string:
+        print("LOBBY_ID: " .. lobby_id)
+    else
+        print("[DEBUG-NET] Joining existing Lobby ID: " .. tostring(lobby_id))
+        local response = http_post(cfg_net.MATCHMAKER_URL .. "/join/" .. lobby_id, payload, local_port)
+        print("[DEBUG-NET] Matchmaker POST /join Response: " .. tostring(response))
+    end
+
+    print("[DEBUG-NET] Entering Polling Loop to wait for 'locked' state...")
+    local status_data = nil
+    local poll_count = 0
+
+    while true do
+        local raw_res = http_get(cfg_net.MATCHMAKER_URL .. "/status/" .. lobby_id)
+        poll_count = poll_count + 1
+
+        if raw_res and raw_res ~= "" then
+            status_data = json_util.decode(raw_res)
+
+            -- Print an update every ~2 seconds (4 * 500ms)
+            if poll_count % 4 == 0 then
+                local current_players = status_data.players and #status_data.players or 0
+                print(string.format("[DEBUG-NET] Poll #%d | Status: %s | Players connected: %d/%d", poll_count, tostring(status_data.status), current_players, cfg_net.MAX_PLAYERS))
+            end
+
+            if status_data.status == "locked" then
+                print("[DEBUG-NET] Lobby Locked! Extracting Session Token...")
+                session_token = extract_true_64bit_token(raw_res)
+                break
+            end
+        else
+            print(string.format("[DEBUG-NET] Poll #%d | HTTP GET failed or returned empty string.", poll_count))
+        end
+        sys_sleep(500)
+    end
+
+    print("[DEBUG-NET] Matchmaker sequence complete. Proceeding to peer evaluation...")
+
+    local local_id = 0
+    for i, p in ipairs(status_data.players) do
+        -- [!] FIX 2: Match the new FastAPI schema (public_ip, public_port)
+        if p.public_ip == my_pub_ip and tonumber(p.public_port) == my_pub_port and p.local_ip == my_local_ip and p.local_port == local_port then
+            local_id = i - 1; break
+        end
+    end
+
+    net.SetPlayerId(local_id)
+    net.SetSession(session_token)
+
+    local p2p_established = {}
+    local active_peers = {}
+
+    for i, p in ipairs(status_data.players) do
+        local peer_id = i - 1
+        if peer_id ~= local_id then
+            active_peers[peer_id] = true
+            -- [!] FIX 2: Updated p.ip -> p.public_ip and p.port -> p.public_port
+            if p.public_ip == my_pub_ip or p.public_ip == "127.0.0.1" or my_pub_ip == "127.0.0.1" then
+                local target_ip = (p.local_ip == my_local_ip) and "127.0.0.1" or p.local_ip
+                print(string.format("[DEBUG-NET] Connecting to local peer %d at %s:%d", peer_id, target_ip, p.local_port))
+                net.Connect(peer_id, target_ip, tonumber(p.local_port))
+                p2p_established[peer_id] = true
+            else
+                print(string.format("[DEBUG-NET] Connecting to remote peer %d at %s:%d", peer_id, p.public_ip, p.public_port))
+                net.Connect(peer_id, p.public_ip, tonumber(p.public_port))
+            end
+        end
+    end
+
+    local real_time_remaining = status_data.start_time - status_data.server_time
+    local sync_start_time = get_time_hires()
+
+    print(string.format("[DEBUG-NET] Entering ICE Punch Handshake... (Time remaining: %.2fs)", real_time_remaining))
+
+    -- ICE Punch Logic (Untouched below here)
+    if real_time_remaining > 0 then
+        local ice_packet_size = ffi.sizeof("IcePunchPacket")
+        local handshake_buffer = ffi.new("RxPacket[32]")
+        local scratch_ice = ffi.new("IcePunchPacket")
+        local p2p_heard = {}
+
+        while (get_time_hires() - sync_start_time) < real_time_remaining do
+            for peer_id, active in pairs(active_peers) do
+                if active and not p2p_established[peer_id] then
+                    local ping_pkt = ffi.new("IcePunchPacket")
+                    ping_pkt.session_token = session_token
+                    ping_pkt.player_id = local_id
+                    ping_pkt.is_ping = p2p_heard[peer_id] and 1 or 0
+                    net.SendTo(ping_pkt, ice_packet_size, peer_id)
+                end
+            end
+
+            local count = net.RecvAll(handshake_buffer, 32)
+            for i = 0, count - 1 do
+                local rx_pkt = handshake_buffer[i]
+                if rx_pkt.len >= ice_packet_size then
+                    ffi.copy(scratch_ice, rx_pkt.data, ice_packet_size)
+                    if scratch_ice.session_token == session_token then
+                        local sender = scratch_ice.player_id
+                        p2p_heard[sender] = true
+                        if scratch_ice.is_ping >= 1 and not p2p_established[sender] then
+                            print(string.format("[DEBUG-NET] ICE Handshake successful with peer %d!", sender))
+                            p2p_established[sender] = true
+                        end
+                    end
+                end
+            end
+            sys_sleep(50)
+        end
+    end
+
+    local needs_relay = false
+    local fallback_peer = 0
+
+    for peer_id, active in pairs(active_peers) do
+        if active and not p2p_established[peer_id] then
+            print(string.format("[DEBUG-NET] Peer %d failed ICE handshake. Falling back to RELAY.", peer_id))
+            print("RELAY_IP: ".. cfg_net.RELAY_IP)
+            print("RELAY_PORT: " .. cfg_net.RELAY_PORT)
+            net.Connect(peer_id, cfg_net.RELAY_IP, cfg_net.RELAY_PORT)
+            p2p_established[peer_id] = true
+            needs_relay = true
+            fallback_peer = peer_id
+        end
+    end
+
+    net.SetRelayIP(cfg_net.RELAY_IP)
+
+    if needs_relay then
+        local reg_pkt = ffi.new("IcePunchPacket")
+        reg_pkt.session_token = session_token
+        reg_pkt.player_id = local_id
+        reg_pkt.is_ping = 0
+        net.SendTo(reg_pkt, ffi.sizeof("IcePunchPacket"), fallback_peer)
+    end
+
+    print("[DEBUG-NET] Bootstrapper complete. Yielding control to FSM.")
+    return session_token, local_id, p2p_established, active_peers, status_data
+end
+
+return NetUtils
