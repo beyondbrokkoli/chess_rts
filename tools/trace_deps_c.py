@@ -32,7 +32,7 @@ def scan_dependencies():
     return graph
 
 def generate_dot(graph):
-    dot = ["digraph WeaverEngineC {", "  node [shape=box, style=filled, fillcolor=lightblue];"]
+    dot = ["digraph WeaverEngineC"]
     for node, edges in graph.items():
         if not edges:
             dot.append(f'  "{node}";')

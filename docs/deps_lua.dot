@@ -1,5 +1,4 @@
-digraph WeaverEngine {
-  node [shape=box, style=filled, fillcolor=lightgray];
+digraph WeaverEngineLua
   "task_shaders";
   "export_c_hdr";
   "task_headless";
@@ -120,6 +119,7 @@ digraph WeaverEngine {
   "vulkan_headers" -> "ffi";
   "swapchain" -> "ffi";
   "swapchain" -> "registry_vk";
+  "weaver_vram" -> "ffi";
   "descriptors" -> "ffi";
   "descriptors" -> "bit";
   "descriptors" -> "registry_vk";
@@ -155,7 +155,7 @@ digraph WeaverEngine {
   "netcode" -> "net_pump";
   "netcode" -> "fsm_core";
   "netcode" -> "network";
-  "netcode" -> "lab_domain";
+  "netcode" -> "plugin";
   "netcode" -> "config_net";
   "net_utils" -> "ffi";
   "net_utils" -> "json_util";
