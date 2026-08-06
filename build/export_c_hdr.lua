@@ -3,8 +3,8 @@ return function(ctx)
 
     -- [!] HARMONIZED WITH host/main.c UNITY BUILD
     local domain_files = {
-        render  = { path = "gen/ssot_render.h", file = nil },
-        sim     = { path = "gen/ssot_types.h",  file = nil }
+        render  = { path = "generated/ssot_render.h", file = nil },
+        sim     = { path = "generated/ssot_types.h",  file = nil }
     }
 
     -- Open files and write initial boilerplate
@@ -55,5 +55,5 @@ return function(ctx)
     end
 
     for _, d in pairs(domain_files) do d.file:close() end
-    print(" |- Domain headers generated successfully in gen/.")
+    print(" |- Domain headers generated successfully in generated/.")
 end

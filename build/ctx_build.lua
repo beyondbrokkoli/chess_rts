@@ -11,10 +11,10 @@ end
 
 if target_platform == "win" then
     os.execute("if not exist bin mkdir bin")
-    os.execute("if not exist gen mkdir gen")
+    os.execute("if not exist generated mkdir generated")
 else
     os.execute("mkdir -p bin 2>/dev/null")
-    os.execute("mkdir -p gen 2>/dev/null")
+    os.execute("mkdir -p generated 2>/dev/null")
 end
 
 local ctx = {

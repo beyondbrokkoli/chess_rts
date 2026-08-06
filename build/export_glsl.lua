@@ -1,6 +1,6 @@
 return function(ctx)
     print("[1/4B] Generating GLSL SSoT...")
-    local out = io.open("gen/registry.glsl", "wb")
+    local out = io.open("generated/registry.glsl", "wb")
     out:write("// AUTO-GENERATED SSoT - DO NOT MODIFY\n#ifndef REGISTRY_GLSL\n#define REGISTRY_GLSL\n\n// --- CONSTANTS ---\n")
 
     for _, k in ipairs(ctx.get_sorted_keys(ctx.cfg_gfx.mode or {})) do

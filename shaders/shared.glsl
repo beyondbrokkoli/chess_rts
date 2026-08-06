@@ -2,7 +2,7 @@
 #define SHARED_GLSL
 
 #extension GL_GOOGLE_include_directive : require
-#include "../gen/registry.glsl"
+#include "../generated/registry.glsl"
 
 layout(push_constant) uniform PushBlock {
     PushConstants pc;

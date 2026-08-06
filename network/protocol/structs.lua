@@ -4,7 +4,7 @@ local ffi = require("ffi")
 local M = {}
 
 local function load_brutalist_structs()
-    local file = assert(io.open("network/shared_structs.h", "r"), "[FATAL] Missing c/shared_structs.h")
+    local file = assert(io.open("network/protocol/shared_structs.h", "r"), "[FATAL] Missing network/protocol/shared_structs.h")
     local c_code = file:read("*a")
     file:close()
 
