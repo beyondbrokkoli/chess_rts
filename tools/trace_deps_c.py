@@ -2,7 +2,7 @@ import os
 import re
 
 # The new modular directories containing C code and headers
-C_DIRS = ["host", "network", "render", "tenant", "gen"]
+C_DIRS = ["host", "network", "render", "generated"]
 
 # Matches ONLY local includes: #include "module.h"
 INCLUDE_PATTERN = re.compile(r'#include\s+"([^"]+)"')

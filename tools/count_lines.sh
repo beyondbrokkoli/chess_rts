@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # 1. Define directories to ignore entirely
-EXCLUDE_DIRS=("external" "vendor" "libs" ".git" "build")
+EXCLUDE_DIRS=("external" "vendor" "libs" ".git" "build" "generated" "gen")
 
 # 2. Define specific files or patterns to ignore
 EXCLUDE_FILES=("sqlite3.c" "glad.c" "autogen.lua" "*_test.c" "vulkan_headers.lua" "dkjson.lua" "venv")

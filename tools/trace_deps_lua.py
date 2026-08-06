@@ -2,7 +2,7 @@ import os
 import re
 
 ROOT_LUA_FILES = []
-LUA_DIRS = ["build", "ssot", "staging", "network"]
+LUA_DIRS = ["build", "ssot", "runtime", "network", "worlds", "tools"]
 
 REQUIRE_PATTERN = re.compile(r"require\s*(?:\(\s*['\"]([^'\"]+)['\"]\s*\)|['\"]([^'\"]+)['\"])")
 

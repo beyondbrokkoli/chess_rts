@@ -2,7 +2,7 @@ import os
 import re
 
 # The new modular directories containing shader files
-GLSL_DIRS = ["shaders", "gen", "ssot"]
+GLSL_DIRS = ["shaders", "generated", "ssot"]
 
 # Matches #include "shared.glsl"
 INCLUDE_PATTERN = re.compile(r'#include\s+"([^"]+)"')
