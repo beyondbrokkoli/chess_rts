@@ -7,7 +7,7 @@
 // By using enums instead of #define, LuaJIT FFI natively parses
 // them for array bounds and exposes them via ffi.C.
 enum {
-    CFG_MAX_PLAYERS = 2,
+    CFG_MAX_PLAYERS = 8,
     CFG_HISTORY_LEN = 60,      // [CHANGED] Was 120. Now tied to LOOKAHEAD_CAP to fit MTU.
     CFG_RING_SIZE = 512,       // Unchanged. The Deep Time Machine.
     CFG_MAX_PACKET_SIZE = 4096,
