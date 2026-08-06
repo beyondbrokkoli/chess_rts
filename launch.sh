@@ -16,6 +16,7 @@ usage() {
     echo "  ./launch.sh host                                 - Boots a single graphical host node"
     echo "  ./launch.sh client [port] [lobby_id]             - Boots a graphical client to join a lobby"
     echo "  ./launch.sh attach [bot_count] [lobby_id]        - Injects headless bots to an existing lobby"
+    echo "  ./launch.sh clean                                - Force-kills all active boot and bot processes"
     echo "======================================================="
     exit 1
 }
@@ -25,18 +26,29 @@ if [ "$#" -eq 0 ]; then usage; fi
 COMMAND=$1
 
 case $COMMAND in
+    clean)
+        if [ "$#" -gt 1 ]; then
+            echo "[ERROR] The 'clean' command must be used independently without other arguments."
+            exit 1
+        fi
+        echo "[SWARM] Force sweeping all active Weaver Engine processes..."
+        pkill -9 -f "boot.elf" 2>/dev/null
+        pkill -9 -f "boot_headless.elf" 2>/dev/null
+        echo "[SWARM] Clean complete. Sockets released."
+        ;;
+
     host)
         echo "[SWARM] Booting Graphical Host Node on port $HOST_PORT..."
         NODE_ROLE=host ./bin/boot$BIN_EXT $HOST_PORT > host.log 2>&1 &
         tail -f host.log
         ;;
-        
+
     client)
         if [ -z "$2" ] || [ -z "$3" ]; then echo "[ERROR] Usage: client [port] [lobby_id]"; exit 1; fi
         echo "[SWARM] Booting Graphical Client Node on port $2 joining Lobby $3..."
         NODE_ROLE=client_manual ./bin/boot$BIN_EXT "$2" "$3" > "client_$2.log" 2>&1 &
         ;;
-        
+
     attach)
         if [ -z "$2" ] || [ -z "$3" ]; then echo "[ERROR] Usage: attach [bot_count] [lobby_id]"; exit 1; fi
         BOT_COUNT=$2
@@ -49,11 +61,11 @@ case $COMMAND in
             echo " |- Spun up Chaos Bot $i (Port: $CLIENT_PORT)"
         done
         ;;
-        
+
     lab)
         $0 swarm 3 4
         ;;
-        
+
     swarm)
         GRAPHICAL_CLIENTS=${2:-0}
         BOT_CLIENTS=${3:-7}
@@ -65,7 +77,7 @@ case $COMMAND in
         fi
 
         echo "[SWARM] Orchestrating $TOTAL_PLAYERS-Node Match..."
-        
+
         NODE_ROLE=host ./bin/boot$BIN_EXT $HOST_PORT > host.log 2>&1 &
         HOST_PID=$!
         SWARM_PIDS=($HOST_PID)
@@ -110,7 +122,7 @@ case $COMMAND in
         echo "[SWARM] All squad nodes have shut down gracefully!"
         kill $TAIL_PID 2>/dev/null
         ;;
-        
+
     *)
         usage
         ;;

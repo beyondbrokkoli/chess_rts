@@ -18,6 +18,7 @@ if /I "%~1"=="lab" goto lab
 if /I "%~1"=="host" goto host
 if /I "%~1"=="client" goto client
 if /I "%~1"=="attach" goto attach
+if /I "%~1"=="clean" goto clean_check
 goto usage
 
 :usage
@@ -30,7 +31,21 @@ echo   launch.bat lab                                  - Spins up 4/4 split (4 g
 echo   launch.bat host                                 - Boots a single graphical host node
 echo   launch.bat client [port] [lobby_id]             - Boots a graphical client to join a lobby
 echo   launch.bat attach [bot_count] [lobby_id]        - Injects headless bots to an existing lobby
+echo   launch.bat clean                                - Force-kills all active boot and bot processes
 echo =======================================================
+exit /b 0
+
+:clean_check
+if not "%~2"=="" (
+    echo [ERROR] The 'clean' command must be used independently without other arguments.
+    exit /b 1
+)
+goto clean
+
+:clean
+echo [SWARM] Force sweeping all active Weaver Engine processes...
+taskkill /F /IM boot.exe /IM boot_headless.exe >nul 2>&1
+echo [SWARM] Clean complete. Sockets released.
 exit /b 0
 
 :host
