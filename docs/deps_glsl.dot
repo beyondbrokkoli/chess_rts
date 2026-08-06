@@ -1,6 +1,0 @@
-digraph WeaverEngineGLSL
-  "render.vert" -> "shared.glsl";
-  "render.frag" -> "shared.glsl";
-  "shared.glsl" -> "registry.glsl";
-  "registry.glsl";
-}

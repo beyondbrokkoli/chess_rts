@@ -4,6 +4,7 @@ HOST_PORT=50000
 echo "[SWARM] Booting 4/4 Split Lab (4 Graphical, 4 Bots)..."
 
 # 1. Host (Graphical)
+# Here i am missing a way to switch to .elf for linux ...
 NODE_ROLE=host ./bin/boot.exe $HOST_PORT > host.log 2>&1 &
 HOST_PID=$!
 SWARM_PIDS=($HOST_PID)

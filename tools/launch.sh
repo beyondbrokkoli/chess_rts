@@ -20,6 +20,7 @@ echo "[SWARM] Orchestrating $TOTAL_PLAYERS-Node Match..."
 
 # 1. Determine Host Binary
 if [ "$HOST_TYPE" == "graphical" ]; then
+# Here i am also missing the switch to toggle for linux ... and the sad part is that i cant use these scripts without msys2 and i cannot package accordingly i need a orchestrator .bat script that sits in the root directory that supports basic commandline functions ... we need basically 4-5 .bat scripts ... or really only half of that because on linux i can launch everything but the issue on linux is that i dont yet support dynamic launch capabilities like lets launch 4 bots only to this lobby that alone would solve a lot if i could launch two graphical clients manually and then attach 6 bots to that lobby
     HOST_BIN="./bin/boot.exe"
     echo "[SWARM] Booting Graphical Host Node on port $HOST_PORT..."
 else
