@@ -14,7 +14,7 @@ static THREAD_FUNC lua_co_overlord_loop(void* arg) {
     }
     lua_setglobal(Ls, "arg");
 
-    if (luaL_dofile(Ls, "staging/main.lua") != LUA_OK) {
+    if (luaL_dofile(Ls, "runtime/boot/main.lua") != LUA_OK) {
         printf("\n[LUA FATAL ERROR] %s\n", lua_tostring(Ls, -1));
         vx_core_shutdown();
     }
