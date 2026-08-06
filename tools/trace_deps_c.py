@@ -46,8 +46,7 @@ if __name__ == "__main__":
     deps = scan_dependencies()
     dot_output = generate_dot(deps)
 
-    with open("deps_c.dot", "w") as f:
+    with open("docs/deps_c.dot", "w") as f:
         f.write(dot_output)
 
-    print("Generated deps_c.dot.")
-#    print("Run: dot -Tsvg deps_c.dot -o deps_c.svg")
+    print("Generated docs/deps_c.dot.")

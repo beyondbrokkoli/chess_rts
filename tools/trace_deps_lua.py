@@ -3,7 +3,6 @@ import re
 
 ROOT_LUA_FILES = []
 LUA_DIRS = ["build", "ssot", "staging", "network"]
-#LUA_DIRS = ["network"]
 
 REQUIRE_PATTERN = re.compile(r"require\s*(?:\(\s*['\"]([^'\"]+)['\"]\s*\)|['\"]([^'\"]+)['\"])")
 
@@ -56,7 +55,7 @@ if __name__ == "__main__":
     deps = scan_dependencies()
     dot_output = generate_dot(deps)
 
-    with open("deps_lua.dot", "w") as f:
+    with open("docs/deps_lua.dot", "w") as f:
         f.write(dot_output)
 
-    print("Generated deps_lua.dot.")
+    print("Generated docs/deps_lua.dot.")

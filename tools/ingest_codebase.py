@@ -14,9 +14,9 @@ GEMINI_DIMENSIONS = 768 # Matches Nomic natively
 LOCAL_EMBED_URL = "http://10.0.0.2:8081/v1/embeddings"
 LOCAL_API_KEY = "TEST1234"
 
-DOT_FILE_LUA = "deps_lua.dot"
-DOT_FILE_C = "deps_c.dot"
-DOT_FILE_GLSL = "deps_glsl.dot"
+DOT_FILE_LUA = "docs/deps_lua.dot"
+DOT_FILE_C = "docs/deps_c.dot"
+DOT_FILE_GLSL = "docs/deps_glsl.dot"
 
 # --- THE ABSOLUTE SOURCE OF TRUTH ---
 INGESTION_MANIFEST = [
