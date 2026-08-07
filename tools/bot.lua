@@ -47,29 +47,42 @@ local Game = require("game_state").init(app_ctx)
 local net_driver = require("netcode")
 
 local function main()
-    -- 1. Validate mandatory local_port
-    local local_port = tonumber(arg[1])
-    if not local_port then
-        print("[FATAL] Missing or invalid local_port.")
-        print("Usage: <exe> <local_port> [target_lobby_id] [target_lobby_size]")
+    -- 1. THE FLOODGATE: Strict validation for all 3 arguments
+    local arg_port = tonumber(arg[1])
+    local arg_lobby = arg[2]
+    local arg_size = tonumber(arg[3])
+
+    if not arg_port or not arg_lobby or not arg_size then
+        print("[FATAL] Invalid boot arguments. Strict CLI format required.")
+        print("Usage: <exe> <port_or_0> <lobby_id_or_'host'> <target_size>")
+        print("  Host:   boot_headless.elf 0 host 2")
+        print("  Client: boot_headless.elf 0 E29B 2")
         os.exit(1)
     end
 
-    -- 2. Parse optional lobby arguments (Treating empty strings as nil)
-    local target_lobby_id = (arg[2] and arg[2] ~= "") and arg[2] or nil
-    local target_lobby_size = tonumber(arg[3])
+    -- 2. DYNAMIC PORT ASSIGNMENT (0 = Auto)
+    local local_port = arg_port
+    if local_port == 0 then
+        -- Seed using hires time + memory address of a new table
+        -- Ensures unique seeds even when spawned in the exact same millisecond by bash
+        local unique_seed = math.floor(get_time_hires() * 10000) + tonumber(tostring({}):sub(8), 16)
+        math.randomseed(unique_seed)
 
-    -- Allocate the 24KB state using the shared InitState function
+        -- Range 49153-65535 (Leaves 49152 exclusively for the Relay server)
+        local_port = math.random(49153, 65535)
+    else
+        math.randomseed(os.time() + local_port)
+    end
+
+    -- 3. KEYWORD TRANSLATION
+    local target_lobby_id = (arg_lobby:lower() == "host") and nil or arg_lobby
+    local target_lobby_size = arg_size
+
     local state_ptr = Game.InitState()
     local state_size = Game.GetStateSize()
 
-    -- Seed the random number generator using the port
-    math.randomseed(os.time() + local_port)
+    print(string.format("[BOT:%d] Booting Headless Chaos Node (Target Size: %d)...", local_port, target_lobby_size))
 
-    print(string.format("[BOT:%d] Booting Headless Chaos Node (Target Size: %s)...",
-        local_port, tostring(target_lobby_size or "DEFAULT")))
-
-    -- 3. Pass target_lobby_size into the netcode initialization
     local net_engine = net_driver.init(local_port, target_lobby_id, target_lobby_size, state_ptr, state_size)
 
     local last_time = get_time_hires()

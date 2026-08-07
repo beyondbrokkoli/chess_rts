@@ -93,11 +93,9 @@ local function extract_true_64bit_token(json_string)
 end
 
 -- THE HEADLESS BOOTSTRAPPER
--- Update signature to receive target_lobby_size
 function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby_id, target_lobby_size)
     print(string.format("[DEBUG-NET] Bootstrapping Port: %d | Local IP: %s", local_port, tostring(my_local_ip)))
 
-    -- Apply fallback to cfg_net.MAX_PLAYERS (static 8) if not provided by CLI
     target_lobby_size = target_lobby_size or cfg_net.MAX_PLAYERS
 
     -- [!] FIX 1: We must actually bind the local UDP socket!
@@ -126,7 +124,12 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
     print(string.format("[DEBUG-NET] Payload built (Target Size: %d) targeting URL: %s", target_lobby_size, cfg_net.MATCHMAKER_URL))
     print("[DEBUG-NET] Payload JSON: " .. payload)
 
+    -- [!] FIX: Defense in depth to translate "host" to nil at the lowest level
     local lobby_id = target_lobby_id
+    if lobby_id and lobby_id:lower() == "host" then
+        lobby_id = nil
+    end
+
     local session_token = nil
 
     if not lobby_id or lobby_id == "" then
@@ -160,10 +163,10 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
         if raw_res and raw_res ~= "" then
             status_data = json_util.decode(raw_res)
 
-            -- Print an update every ~2 seconds (4 * 500ms)
             if poll_count % 4 == 0 then
                 local current_players = status_data.players and #status_data.players or 0
-                print(string.format("[DEBUG-NET] Poll #%d | Status: %s | Players connected: %d/%d", poll_count, tostring(status_data.status), current_players, cfg_net.MAX_PLAYERS))
+                -- [!] FIX: Print target_lobby_size instead of cfg_net.MAX_PLAYERS
+                print(string.format("[DEBUG-NET] Poll #%d | Status: %s | Players connected: %d/%d", poll_count, tostring(status_data.status), current_players, target_lobby_size))
             end
 
             if status_data.status == "locked" then
