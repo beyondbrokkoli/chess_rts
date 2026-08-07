@@ -1,0 +1,1 @@
+/home/halim/models/qdrant
