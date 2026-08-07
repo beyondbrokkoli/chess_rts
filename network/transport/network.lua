@@ -8,7 +8,11 @@ local net_lib = ffi.load(lib_path)
 local Network = {}
 
 function Network.Host(port)
-    return net_lib.vx_net_host(port) == 0
+    local bound_port = net_lib.vx_net_host(port)
+    if bound_port == -1 then
+        return false -- Bind failed
+    end
+    return bound_port -- Returns the actual assigned port
 end
 
 function Network.Connect(peer_id, ip, port)

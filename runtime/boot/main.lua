@@ -92,19 +92,11 @@ local function main()
         os.exit(1)
     end
 
-    -- 2. DYNAMIC PORT ASSIGNMENT (0 = Auto)
+    -- 2. DYNAMIC PORT ASSIGNMENT (0 = Auto via OS)
     local local_port = arg_port
-    if local_port == 0 then
-        -- Seed using hires time + memory address of a new table
-        -- Ensures unique seeds even when spawned in the exact same millisecond by bash
-        local unique_seed = math.floor(get_time_hires() * 10000) + tonumber(tostring({}):sub(8), 16)
-        math.randomseed(unique_seed)
 
-        -- Range 49153-65535 (Leaves 49152 exclusively for the Relay server)
-        local_port = math.random(49153, 65535)
-    else
-        math.randomseed(os.time() + local_port)
-    end
+    -- We only need to seed random for game logic now, not port guessing
+    math.randomseed(os.time() + (local_port == 0 and tonumber(tostring({}):sub(8), 16) or local_port))
 
     -- 3. KEYWORD TRANSLATION
     local target_lobby_id = (arg_lobby:lower() == "host") and nil or arg_lobby

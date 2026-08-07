@@ -140,9 +140,17 @@ EXPORT int vx_net_host(int port) {
     struct sockaddr_in local = {0};
     local.sin_family = AF_INET;
     local.sin_addr.s_addr = htonl(INADDR_ANY);
-    local.sin_port = htons((uint16_t)port);
+    local.sin_port = htons((uint16_t)port); // OS handles 0 automatically
 
     if (bind(sock, (struct sockaddr*)&local, sizeof(local)) == NET_ERROR) {
+        NET_CLOSE(sock);
+        return -1;
+    }
+
+    // --- NEW: Ask the OS what port we actually bound to ---
+    struct sockaddr_in bound_addr;
+    socklen_t len = sizeof(bound_addr);
+    if (getsockname(sock, (struct sockaddr*)&bound_addr, &len) == NET_ERROR) {
         NET_CLOSE(sock);
         return -1;
     }
@@ -154,7 +162,9 @@ EXPORT int vx_net_host(int port) {
 #endif
 
     g_net.sock = sock;
-    return 0;
+
+    // Return the actual port integer to Lua!
+    return ntohs(bound_addr.sin_port);
 }
 
 EXPORT int vx_net_connect(uint8_t peer_id, const char* ip, int port) {

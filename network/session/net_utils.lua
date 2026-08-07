@@ -98,12 +98,16 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
 
     target_lobby_size = target_lobby_size or cfg_net.MAX_PLAYERS
 
-    -- [!] FIX 1: We must actually bind the local UDP socket!
-    if not net.Host(local_port) then
+    -- Call net.Host, which now returns the OS-assigned port!
+    local actual_port = net.Host(local_port)
+    if not actual_port then
         print(string.format("[FATAL] Failed to bind local UDP port %d. Is it already in use?", local_port))
         os.exit(1)
     end
-    print("[DEBUG-NET] Local UDP socket successfully bound.")
+
+    -- Overwrite local_port with the real port assigned by the OS (crucial for STUN/Matchmaker)
+    local_port = actual_port
+    print(string.format("[DEBUG-NET] Local UDP socket successfully bound to port %d.", local_port))
 
     print(string.format("[DEBUG-NET] Firing STUN Punch to %s:%d...", cfg_net.STUN_SERVER, cfg_net.STUN_PORT))
     local stun_ok, my_pub_ip, my_pub_port = net.StunPunch(cfg_net.STUN_SERVER, cfg_net.STUN_PORT)
