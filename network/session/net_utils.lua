@@ -136,7 +136,8 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
 
     local session_token = nil
 
-    if not lobby_id or lobby_id == "" then
+    -- [!] FIX: Removed 'or lobby_id == ""'. If it's empty, it fails to join.
+    if lobby_id == nil then
         print("[DEBUG-NET] Requesting new Lobby ID from Matchmaker...")
         local response = http_post(cfg_net.MATCHMAKER_URL .. "/host", payload, local_port)
 
@@ -153,14 +154,14 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
         end
 
         lobby_id = decoded.lobby_id
-        -- The Bash/Bat swarm script greps for this exact string:
         print("LOBBY_ID: " .. lobby_id)
     else
+        -- [!] STRICT JOIN: If they pass an empty string "", the server will 404 cleanly.
         print("[DEBUG-NET] Joining existing Lobby ID: " .. tostring(lobby_id))
         local response = http_post(cfg_net.MATCHMAKER_URL .. "/join/" .. lobby_id, payload, local_port)
 
         if not response or response == "" then
-            print(string.format("[FATAL] Failed to join lobby %s. Matchmaker unreachable.", lobby_id))
+            print(string.format("[FATAL] Failed to join lobby '%s'. Matchmaker unreachable.", lobby_id))
             os.exit(1)
         end
 
@@ -172,8 +173,7 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
         print("[DEBUG-NET] Matchmaker POST /join Response: " .. tostring(response))
     end
 
-    print("[DEBUG-NET] Entering Polling Loop to wait for 'locked' state...")
-
+    print(string.format("[DEBUG-NET] Entering Polling Loop for Lobby %s to lock...", lobby_id))
     local status_data = nil
     local poll_count = 0
 
@@ -184,20 +184,30 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
         if raw_res and raw_res ~= "" then
             status_data = json_util.decode(raw_res)
 
-            if poll_count % 4 == 0 then
-                local current_players = status_data.players and #status_data.players or 0
-                -- [!] FIX: Print target_lobby_size instead of cfg_net.MAX_PLAYERS
-                print(string.format("[DEBUG-NET] Poll #%d | Status: %s | Players connected: %d/%d", poll_count, tostring(status_data.status), current_players, target_lobby_size))
-            end
+            if not status_data then
+                print(string.format("[DEBUG-NET] Poll #%d | Warning: Failed to parse Matchmaker JSON.", poll_count))
+            else
+                -- [!] ALIGNMENT FIX: Synchronize client target_size with the host's decision!
+                if status_data.target_size then
+                    target_lobby_size = status_data.target_size
+                end
 
-            if status_data.status == "locked" then
-                print("[DEBUG-NET] Lobby Locked! Extracting Session Token...")
-                session_token = extract_true_64bit_token(raw_res)
-                break
+                if poll_count % 4 == 0 then
+                    local current_players = status_data.players and #status_data.players or 0
+                    print(string.format("[DEBUG-NET] Poll #%d | Status: %s | Players connected: %d/%d", 
+                        poll_count, tostring(status_data.status), current_players, target_lobby_size))
+                end
+
+                if status_data.status == "locked" then
+                    print("[DEBUG-NET] Lobby Locked! Extracting Session Token...")
+                    session_token = extract_true_64bit_token(raw_res)
+                    break
+                end
             end
         else
-            print(string.format("[DEBUG-NET] Poll #%d | HTTP GET failed or returned empty string.", poll_count))
+            print(string.format("[DEBUG-NET] Poll #%d | HTTP GET failed. Matchmaker offline?", poll_count))
         end
+
         sys_sleep(500)
     end
 
