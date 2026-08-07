@@ -47,35 +47,11 @@ local Game = require("game_state").init(app_ctx)
 local net_driver = require("netcode")
 
 local function main()
-    -- 1. THE FLOODGATE: Strict validation for all 3 arguments
-    local arg_port = tonumber(arg[1])
-    local arg_lobby = arg[2]
-    local arg_size = tonumber(arg[3])
-
-    if not arg_port or not arg_lobby or not arg_size then
-        print("[FATAL] Invalid boot arguments. Strict CLI format required.")
-        print("Usage: <exe> <port_or_0> <lobby_id_or_'host'> <target_size>")
-        print("  Host:   boot_headless.elf 0 host 2")
-        print("  Client: boot_headless.elf 0 E29B 2")
-        os.exit(1)
-    end
-
-    -- 2. DYNAMIC PORT ASSIGNMENT (0 = Auto via OS)
-    local local_port = arg_port
-
-    -- We only need to seed random for game logic now, not port guessing
-    math.randomseed(os.time() + (local_port == 0 and tonumber(tostring({}):sub(8), 16) or local_port))
-
-    -- 3. KEYWORD TRANSLATION
-    local target_lobby_id = (arg_lobby:lower() == "host") and nil or arg_lobby
-    local target_lobby_size = arg_size
-
     local state_ptr = Game.InitState()
     local state_size = Game.GetStateSize()
 
-    print(string.format("[BOT:%d] Booting Headless Chaos Node (Target Size: %d)...", local_port, target_lobby_size))
-
-    local net_engine = net_driver.init(local_port, target_lobby_id, target_lobby_size, state_ptr, state_size)
+    -- BLIND DELEGATION: Pipe arg[1] and arg[2] straight to the netcode floodgate
+    local net_engine = net_driver.init(arg[1], arg[2], state_ptr, state_size)
 
     local last_time = get_time_hires()
     local tick_count = 0
