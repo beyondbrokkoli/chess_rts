@@ -47,28 +47,25 @@ local Game = require("game_state").init(app_ctx)
 local net_driver = require("netcode")
 
 local function main()
-    -- 1. THE FLOODGATE: Strict validation for all 3 arguments
-    local arg_port = tonumber(arg[1])
-    local arg_lobby = arg[2]
-    local arg_size = tonumber(arg[3])
+    -- 1. THE SMART FLOODGATE: Auto-detect old vs new CLI formats
+    local raw_lobby, raw_size
+    if tonumber(arg[1]) and arg[2] then
+        raw_lobby = arg[2]
+        raw_size = arg[3]
+    else
+        raw_lobby = arg[1]
+        raw_size = arg[2]
+    end
 
-    if not arg_port or not arg_lobby or not arg_size then
-        print("[FATAL] Invalid boot arguments. Strict CLI format required.")
-        print("Usage: <exe> <port_or_0> <lobby_id_or_'host'> <target_size>")
-        print("  Host:   boot_headless.elf 0 host 2")
-        print("  Client: boot_headless.elf 0 E29B 2")
+    if not raw_lobby or not raw_size then
+        print("[FATAL] Invalid boot arguments. Usage: <exe> <lobby_id_or_'host'> <target_size>")
         os.exit(1)
     end
 
-    -- 2. DYNAMIC PORT ASSIGNMENT (0 = Auto via OS)
-    local local_port = arg_port
-
-    -- We only need to seed random for game logic now, not port guessing
-    math.randomseed(os.time() + (local_port == 0 and tonumber(tostring({}):sub(8), 16) or local_port))
-
-    -- 3. KEYWORD TRANSLATION
-    local target_lobby_id = (arg_lobby:lower() == "host") and nil or arg_lobby
-    local target_lobby_size = arg_size
+    local target_lobby_id = (raw_lobby:lower() == "host") and nil or raw_lobby
+    local target_lobby_size = tonumber(raw_size) or 8
+    local local_port = 0
+    math.randomseed(os.time() + tonumber(tostring({}):sub(8), 16))
 
     local state_ptr = Game.InitState()
     local state_size = Game.GetStateSize()

@@ -128,17 +128,17 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
     print(string.format("[DEBUG-NET] Payload built (Target Size: %d) targeting URL: %s", target_lobby_size, cfg_net.MATCHMAKER_URL))
     print("[DEBUG-NET] Payload JSON: " .. payload)
 
-    -- [!] FIX: Defense in depth to translate "host" to nil at the lowest level
     local lobby_id = target_lobby_id
-    if lobby_id and lobby_id:lower() == "host" then
-        lobby_id = nil
-    end
-
     local session_token = nil
 
     if not lobby_id or lobby_id == "" then
         print("[DEBUG-NET] Requesting new Lobby ID from Matchmaker...")
         local response = http_post(cfg_net.MATCHMAKER_URL .. "/host", payload, local_port)
+
+        if not response or response == "" then
+            print("[FATAL] Matchmaker unreachable (empty response).")
+            os.exit(1)
+        end
         print("[DEBUG-NET] Matchmaker POST /host Response: " .. tostring(response))
 
         local decoded = json_util.decode(response)
@@ -148,15 +148,28 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
         end
 
         lobby_id = decoded.lobby_id
-        -- The Bash swarm script greps for this exact string:
+        -- The Bash/Bat swarm script greps for this exact string:
         print("LOBBY_ID: " .. lobby_id)
     else
         print("[DEBUG-NET] Joining existing Lobby ID: " .. tostring(lobby_id))
         local response = http_post(cfg_net.MATCHMAKER_URL .. "/join/" .. lobby_id, payload, local_port)
+
+        if not response or response == "" then
+            print(string.format("[FATAL] Failed to join lobby %s. Matchmaker unreachable.", lobby_id))
+            os.exit(1)
+        end
+
+        -- [!] NEW: Catch the exact FastAPI 404 error you experienced
+        local decoded = json_util.decode(response)
+        if decoded and decoded.detail == "Not Found" then
+            print(string.format("[FATAL] Matchmaker rejected join. Lobby '%s' does not exist!", lobby_id))
+            os.exit(1)
+        end
         print("[DEBUG-NET] Matchmaker POST /join Response: " .. tostring(response))
     end
 
     print("[DEBUG-NET] Entering Polling Loop to wait for 'locked' state...")
+
     local status_data = nil
     local poll_count = 0
 

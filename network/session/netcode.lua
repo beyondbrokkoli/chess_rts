@@ -32,13 +32,10 @@ local RELAY_PORT  = 49152
 
 local NetCore = {}
 
--- ... [Top of file remains unchanged] ...
-
-local NetCore = {}
-
 -- Change signature to accept target_lobby_size
 function NetCore.init(local_port, target_lobby_id, target_lobby_size, ext_state_ptr, ext_state_size)
-    local_port = tonumber(local_port) or 0
+    -- [FORCE EPHEMERAL] Unlink completely from manual ports
+    local_port = 0
     print(string.format("[LAB] Initializing Headless Node on Port %d...", local_port))
 
     local my_local_ip = net_utils.get_local_ip()
