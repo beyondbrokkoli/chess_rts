@@ -47,8 +47,17 @@ local Game = require("game_state").init(app_ctx)
 local net_driver = require("netcode")
 
 local function main()
-    local local_port = tonumber(arg[1]) or 49200
-    local target_lobby_id = arg[2]
+    -- 1. Validate mandatory local_port
+    local local_port = tonumber(arg[1])
+    if not local_port then
+        print("[FATAL] Missing or invalid local_port.")
+        print("Usage: <exe> <local_port> [target_lobby_id] [target_lobby_size]")
+        os.exit(1)
+    end
+
+    -- 2. Parse optional lobby arguments (Treating empty strings as nil)
+    local target_lobby_id = (arg[2] and arg[2] ~= "") and arg[2] or nil
+    local target_lobby_size = tonumber(arg[3])
 
     -- Allocate the 24KB state using the shared InitState function
     local state_ptr = Game.InitState()
@@ -57,8 +66,11 @@ local function main()
     -- Seed the random number generator using the port
     math.randomseed(os.time() + local_port)
 
-    print(string.format("[BOT:%d] Booting Headless Chaos Node...", local_port))
-    local net_engine = net_driver.init(local_port, target_lobby_id, state_ptr, state_size)
+    print(string.format("[BOT:%d] Booting Headless Chaos Node (Target Size: %s)...",
+        local_port, tostring(target_lobby_size or "DEFAULT")))
+
+    -- 3. Pass target_lobby_size into the netcode initialization
+    local net_engine = net_driver.init(local_port, target_lobby_id, target_lobby_size, state_ptr, state_size)
 
     local last_time = get_time_hires()
     local tick_count = 0

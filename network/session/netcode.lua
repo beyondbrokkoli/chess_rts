@@ -32,12 +32,24 @@ local RELAY_PORT  = 49152
 
 local NetCore = {}
 
-function NetCore.init(local_port, target_lobby_id, ext_state_ptr, ext_state_size)
+-- ... [Top of file remains unchanged] ...
+
+local NetCore = {}
+
+-- Change signature to accept target_lobby_size
+function NetCore.init(local_port, target_lobby_id, target_lobby_size, ext_state_ptr, ext_state_size)
     local_port = tonumber(local_port) or RELAY_PORT
     print(string.format("[LAB] Initializing Headless Node on Port %d...", local_port))
 
     local my_local_ip = net_utils.get_local_ip()
-    local session_token, local_id, p2p_established, active_peers = net_utils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby_id)
+
+    -- Forward target_lobby_size down to the topology bootstrapper
+    local session_token, local_id, p2p_established, active_peers = net_utils.BootstrapNetworkTopology(
+        local_port,
+        my_local_ip,
+        target_lobby_id,
+        target_lobby_size
+    )
 
     local app_ctx = {
         -- [FIXED] Pass the real config module instead of a hardcoded inline table!

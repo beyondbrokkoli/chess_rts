@@ -93,8 +93,12 @@ local function extract_true_64bit_token(json_string)
 end
 
 -- THE HEADLESS BOOTSTRAPPER
-function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby_id)
+-- Update signature to receive target_lobby_size
+function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby_id, target_lobby_size)
     print(string.format("[DEBUG-NET] Bootstrapping Port: %d | Local IP: %s", local_port, tostring(my_local_ip)))
+
+    -- Apply fallback to cfg_net.MAX_PLAYERS (static 8) if not provided by CLI
+    target_lobby_size = target_lobby_size or cfg_net.MAX_PLAYERS
 
     -- [!] FIX 1: We must actually bind the local UDP socket!
     if not net.Host(local_port) then
@@ -112,12 +116,14 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
         print(string.format("[DEBUG-NET] STUN Success: %s:%d", tostring(my_pub_ip), my_pub_port))
     end
 
+    -- Build the payload with the dynamic target_size
     local payload = json_util.encode({
         public_ip = my_pub_ip, public_port = my_pub_port,
         local_ip = my_local_ip, local_port = local_port,
-        target_size = cfg_net.MAX_PLAYERS
+        target_size = target_lobby_size
     })
-    print(string.format("[DEBUG-NET] Payload built (Target Size: %s) targeting URL: %s", tostring(cfg_net.MAX_PLAYERS), cfg_net.MATCHMAKER_URL))
+
+    print(string.format("[DEBUG-NET] Payload built (Target Size: %d) targeting URL: %s", target_lobby_size, cfg_net.MATCHMAKER_URL))
     print("[DEBUG-NET] Payload JSON: " .. payload)
 
     local lobby_id = target_lobby_id
