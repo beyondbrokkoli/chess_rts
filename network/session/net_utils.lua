@@ -166,8 +166,14 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
         end
 
         local decoded = json_util.decode(response)
-        if decoded and decoded.detail == "Not Found" then
-            print(string.format("[FATAL] Matchmaker rejected join. Lobby '%s' does not exist!", lobby_id))
+        -- [!] THE CATCH-ALL: If FastAPI returns *any* detail key, it's an HTTP exception.
+        if decoded and decoded.detail then
+            if type(decoded.detail) == "string" then
+                print(string.format("[FATAL] Matchmaker rejected join: %s", decoded.detail))
+            else
+                -- It's a Pydantic array (e.g. 422 Validation Error)
+                print("[FATAL] Matchmaker rejected join: Unprocessable Entity (Invalid Payload)")
+            end
             os.exit(1)
         end
         print("[DEBUG-NET] Matchmaker POST /join Response: " .. tostring(response))
@@ -186,6 +192,11 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
 
             if not status_data then
                 print(string.format("[DEBUG-NET] Poll #%d | Warning: Failed to parse Matchmaker JSON.", poll_count))
+            elseif status_data.detail then
+                -- [!] GHOST BUSTER: Catch 404s/422s if the polling loop hits a dead endpoint
+                print(string.format("[FATAL] Matchmaker polling failed: %s",
+                    type(status_data.detail) == "string" and status_data.detail or "Invalid Query"))
+                os.exit(1)
             else
                 -- [!] ALIGNMENT FIX: Synchronize client target_size with the host's decision!
                 if status_data.target_size then
@@ -194,7 +205,7 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
 
                 if poll_count % 4 == 0 then
                     local current_players = status_data.players and #status_data.players or 0
-                    print(string.format("[DEBUG-NET] Poll #%d | Status: %s | Players connected: %d/%d", 
+                    print(string.format("[DEBUG-NET] Poll #%d | Status: %s | Players connected: %d/%d",
                         poll_count, tostring(status_data.status), current_players, target_lobby_size))
                 end
 
