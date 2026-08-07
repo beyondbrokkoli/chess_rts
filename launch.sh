@@ -1,10 +1,9 @@
 #!/bin/bash
+# launch.sh - Weaver Engine Orchestrator (Linux) - V2 (Smart Node)
 
-# Force execution context to root
 cd "$(dirname "$0")" || exit
 
 BIN_EXT=".elf"
-HOST_PORT=50000
 
 usage() {
     echo "======================================================="
@@ -14,8 +13,8 @@ usage() {
     echo "  ./launch.sh swarm [graphical_count] [bot_count]  - Spins up a local swarm cluster"
     echo "  ./launch.sh lab                                  - Spins up 4/4 split (4 graphical, 4 bots)"
     echo "  ./launch.sh host [size]                          - Boots a graphical host node (default size: 8)"
-    echo "  ./launch.sh client [lobby_id] [size]             - Boots a graphical client to join a lobby (auto-port)"
-    echo "  ./launch.sh attach [bot_count] [lobby_id] [size] - Injects headless bots to an existing lobby (auto-port)"
+    echo "  ./launch.sh client [lobby_id] [size]             - Boots a graphical client to join a lobby"
+    echo "  ./launch.sh attach [bot_count] [lobby_id] [size] - Injects headless bots to an existing lobby"
     echo "  ./launch.sh clean                                - Force-kills all active boot and bot processes"
     echo "======================================================="
     exit 1
@@ -28,7 +27,7 @@ COMMAND=$1
 case $COMMAND in
     clean)
         if [ "$#" -gt 1 ]; then
-            echo "[ERROR] The 'clean' command must be used independently without other arguments."
+            echo "[ERROR] The 'clean' command must be used independently."
             exit 1
         fi
         echo "[SWARM] Force sweeping all active Weaver Engine processes..."
@@ -39,8 +38,8 @@ case $COMMAND in
 
     host)
         TARGET_SIZE=${2:-8}
-        echo "[SWARM] Booting Graphical Host Node on port $HOST_PORT (Size: $TARGET_SIZE)..."
-        ./bin/boot$BIN_EXT $HOST_PORT host $TARGET_SIZE > logs/host.log 2>&1 &
+        echo "[SWARM] Booting Graphical Host Node (Size: $TARGET_SIZE)..."
+        ./bin/boot$BIN_EXT host "$TARGET_SIZE" > logs/host.log 2>&1 &
         tail -f logs/host.log
         ;;
 
@@ -49,7 +48,7 @@ case $COMMAND in
         LOBBY_ID=$2
         TARGET_SIZE=${3:-8}
         echo "[SWARM] Booting Graphical Client Node joining Lobby $LOBBY_ID (Size: $TARGET_SIZE)..."
-        ./bin/boot$BIN_EXT 0 "$LOBBY_ID" "$TARGET_SIZE" > "logs/client_manual.log" 2>&1 &
+        ./bin/boot$BIN_EXT "$LOBBY_ID" "$TARGET_SIZE" > logs/client_manual.log 2>&1 &
         ;;
 
     attach)
@@ -59,8 +58,8 @@ case $COMMAND in
         TARGET_SIZE=${4:-8}
         echo "[SWARM] Injecting $BOT_COUNT Headless Bots to Lobby $LOBBY_ID (Size: $TARGET_SIZE)..."
         for ((i=1; i<=BOT_COUNT; i++)); do
-            ./bin/boot_headless$BIN_EXT 0 "$LOBBY_ID" "$TARGET_SIZE" > "logs/bot_attach_${i}.log" 2>&1 &
-            echo " |- Spun up Chaos Bot $i on auto-port"
+            ./bin/boot_headless$BIN_EXT "$LOBBY_ID" "$TARGET_SIZE" > logs/bot_attach_${i}.log 2>&1 &
+            echo " |- Spun up Chaos Bot $i"
         done
         ;;
 
@@ -73,14 +72,8 @@ case $COMMAND in
         BOT_CLIENTS=${3:-7}
         TOTAL_PLAYERS=$((1 + GRAPHICAL_CLIENTS + BOT_CLIENTS))
 
-        if [ "$TOTAL_PLAYERS" -gt 8 ]; then
-            echo "[SWARM] FATAL: Total players ($TOTAL_PLAYERS) exceeds CFG_MAX_PLAYERS (8)."
-            exit 1
-        fi
-
         echo "[SWARM] Orchestrating $TOTAL_PLAYERS-Node Match..."
-
-        ./bin/boot$BIN_EXT $HOST_PORT host $TOTAL_PLAYERS > logs/host.log 2>&1 &
+        ./bin/boot$BIN_EXT host "$TOTAL_PLAYERS" > logs/host.log 2>&1 &
         HOST_PID=$!
         SWARM_PIDS=($HOST_PID)
 
@@ -96,17 +89,17 @@ case $COMMAND in
 
         # Graphical Clients
         for ((i=1; i<=GRAPHICAL_CLIENTS; i++)); do
-            ./bin/boot$BIN_EXT 0 "$LOBBY_ID" $TOTAL_PLAYERS > "logs/client_${CLIENT_IDX}.log" 2>&1 &
+            ./bin/boot$BIN_EXT "$LOBBY_ID" "$TOTAL_PLAYERS" > logs/client_${CLIENT_IDX}.log 2>&1 &
             SWARM_PIDS+=($!)
-            echo " |- Spun up Graphical Client $CLIENT_IDX on auto-port"
+            echo " |- Spun up Graphical Client $CLIENT_IDX"
             ((CLIENT_IDX++))
         done
 
         # Headless Bots
         for ((i=1; i<=BOT_CLIENTS; i++)); do
-            ./bin/boot_headless$BIN_EXT 0 "$LOBBY_ID" $TOTAL_PLAYERS > "logs/bot_${CLIENT_IDX}.log" 2>&1 &
+            ./bin/boot_headless$BIN_EXT "$LOBBY_ID" "$TOTAL_PLAYERS" > logs/bot_${CLIENT_IDX}.log 2>&1 &
             SWARM_PIDS+=($!)
-            echo " |- Spun up Chaos Bot $CLIENT_IDX on auto-port"
+            echo " |- Spun up Chaos Bot $CLIENT_IDX"
             ((CLIENT_IDX++))
         done
 
