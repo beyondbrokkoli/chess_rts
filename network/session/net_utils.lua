@@ -128,7 +128,12 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
     print(string.format("[DEBUG-NET] Payload built (Target Size: %d) targeting URL: %s", target_lobby_size, cfg_net.MATCHMAKER_URL))
     print("[DEBUG-NET] Payload JSON: " .. payload)
 
+    -- [!] THE SAFETY SWITCH: Intercept the "host" keyword and neutralize it to nil
     local lobby_id = target_lobby_id
+    if type(lobby_id) == "string" and lobby_id:lower() == "host" then
+        lobby_id = nil
+    end
+
     local session_token = nil
 
     if not lobby_id or lobby_id == "" then
@@ -159,7 +164,6 @@ function NetUtils.BootstrapNetworkTopology(local_port, my_local_ip, target_lobby
             os.exit(1)
         end
 
-        -- [!] NEW: Catch the exact FastAPI 404 error you experienced
         local decoded = json_util.decode(response)
         if decoded and decoded.detail == "Not Found" then
             print(string.format("[FATAL] Matchmaker rejected join. Lobby '%s' does not exist!", lobby_id))
