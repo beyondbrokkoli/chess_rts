@@ -91,8 +91,10 @@ if "%GRAPHICAL_CLIENTS%"=="" set GRAPHICAL_CLIENTS=0
 if "%BOT_CLIENTS%"=="" set BOT_CLIENTS=7
 
 set /A TOTAL_PLAYERS=1 + GRAPHICAL_CLIENTS + BOT_CLIENTS
+
+:: [!] FIX: Removed parentheses from the echo string to prevent parser breakage
 if %TOTAL_PLAYERS% GTR 8 (
-    echo [SWARM] FATAL: Total players (%TOTAL_PLAYERS%) exceeds CFG_MAX_PLAYERS (8).
+    echo [SWARM] FATAL: Total players %TOTAL_PLAYERS% exceeds CFG_MAX_PLAYERS limit of 8.
     exit /b 1
 )
 
