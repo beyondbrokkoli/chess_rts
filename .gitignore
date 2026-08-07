@@ -5,6 +5,5 @@ storage
 .qdrant-initialized
 start.sh
 start.bat
-logs
 README.md
 runtime/services/gpu/vulkan_headers.lua
