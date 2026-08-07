@@ -36,54 +36,67 @@ local NetCore = {}
 
 local NetCore = {}
 
--- Change signature to accept target_lobby_size
-function NetCore.init(local_port, target_lobby_id, target_lobby_size, ext_state_ptr, ext_state_size)
-    local_port = tonumber(local_port) or 0
-    print(string.format("[LAB] Initializing Headless Node on Port %d...", local_port))
+-- NEW SIGNATURE: Takes raw string arguments straight from the CLI
+function NetCore.init(raw_lobby_arg, raw_size_arg, ext_state_ptr, ext_state_size)
+    -- 1. THE UNIFIED FLOODGATE
+    if not raw_lobby_arg then
+        print("[FATAL] Missing lobby argument. Strict CLI format required.")
+        print("Usage: <exe> <lobby_id_or_'host'> <target_size>")
+        print("  Host:   boot_headless.elf host 8")
+        print("  Client: boot_headless.elf E29B 8")
+        os.exit(1)
+    end
+
+    local target_lobby_id = (raw_lobby_arg:lower() == "host") and nil or raw_lobby_arg
+    local target_lobby_size = tonumber(raw_size_arg) or ffi.C.CFG_MAX_PLAYERS
+
+    if target_lobby_size > ffi.C.CFG_MAX_PLAYERS then
+        print(string.format("[FATAL] Requested size %d exceeds CFG_MAX_PLAYERS limit of %d.", target_lobby_size, ffi.C.CFG_MAX_PLAYERS))
+        os.exit(1)
+    end
+
+    -- 2. INITIAL RANDOM SEEDING (Using hires time + memory address for entropy)
+    local entropy = tonumber(tostring({}):sub(8), 16) or 0
+    math.randomseed(os.time() + entropy)
+
+    print(string.format("[LAB] Initializing Node (Lobby: %s, Size: %d)...", target_lobby_id or "NEW HOST", target_lobby_size))
 
     local my_local_ip = net_utils.get_local_ip()
 
-    -- Forward target_lobby_size down to the topology bootstrapper
+    -- 3. NETWORK BOOTSTRAP (Forcing Port 0 for OS Ephemeral Assignment)
     local session_token, local_id, p2p_established, active_peers = net_utils.BootstrapNetworkTopology(
-        local_port,
+        0, 
         my_local_ip,
         target_lobby_id,
         target_lobby_size
     )
 
     local app_ctx = {
-        -- [FIXED] Pass the real config module instead of a hardcoded inline table!
-        -- Now DESYNC_SWEEP will properly be 510, matching the deep time machine.
         cfg_net = config_net,
-
         net_identity = local_id,
         session_token = session_token,
         rollback_arena = ffi.new("RollbackBuffer"),
         peer_active = active_peers,
         p2p_established = p2p_established,
-        peer_highest_tick = ffi.new("uint32_t[?]", MAX_PLAYERS),
-        peer_ack_of_me = ffi.new("uint32_t[?]", MAX_PLAYERS),
+        peer_highest_tick = ffi.new("uint32_t[?]", ffi.C.CFG_MAX_PLAYERS),
+        peer_ack_of_me = ffi.new("uint32_t[?]", ffi.C.CFG_MAX_PLAYERS),
         sim_tick_count = 1,
         accumulator = 0.0,
         rts_grid = ffi.new("LabWorldState"),
         snapshot_ring = ffi.new("LabWorldState[?]", RING_SIZE),
-
-        -- [TOW TRUCK] Link the external visual memory for the domain to modify
         ext_state_ptr = ext_state_ptr,
         ext_state_size = ext_state_size,
-        -- Allocate a raw byte ring-buffer to snapshot the visual state for rollbacks (approx 400MB)
         ext_snapshot_ring = ffi.new("uint8_t[?]", ext_state_size * RING_SIZE)
     }
 
+    -- 4. DETERMINISTIC RESEED
     math.randomseed(os.time() + local_id)
 
     local lab_domain = create_lab_domain(app_ctx)
     local pump = net_pump.init(app_ctx)
     local fsm = fsm_core.init(app_ctx, lab_domain)
 
-    -- [FIX] ANCHOR SNAPSHOT ZERO
-    -- Before the FSM begins, save the absolute starting state to index 0.
-    -- If we rollback to Tick 1, this prevents the engine from restoring uninitialized memory.
+    -- [ANCHOR SNAPSHOT ZERO]
     local STATE_SIZE = lab_domain.GetStateSize()
     ffi.copy(app_ctx.snapshot_ring[0], app_ctx.rts_grid, STATE_SIZE)
 
