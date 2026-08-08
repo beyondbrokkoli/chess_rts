@@ -121,15 +121,9 @@ flowchart LR
     runtime_boot_main_lua --> ssot_ctx_types_lua
     runtime_boot_main_lua --> ssot_type_math_lua
     runtime_boot_main_lua --> ssot_type_render_lua
-    runtime_boot_window_api_lua --> ffi
-    runtime_presentation_graphics_compute_pipeline_lua --> ffi
     runtime_presentation_graphics_compute_pipeline_lua --> runtime_services_gpu_registry_vk_lua
-    runtime_presentation_graphics_graphics_pipeline_lua --> bit
-    runtime_presentation_graphics_graphics_pipeline_lua --> ffi
     runtime_presentation_graphics_graphics_pipeline_lua --> runtime_services_gpu_registry_vk_lua
-    runtime_presentation_graphics_renderer_lua --> ffi
     runtime_presentation_graphics_renderer_lua --> runtime_services_gpu_registry_vk_lua
-    runtime_presentation_graphics_sequence_lua --> ffi
     runtime_presentation_graphics_sequence_lua --> runtime_boot_engine_api_lua
     runtime_presentation_graphics_sequence_lua --> runtime_boot_window_api_lua
     runtime_presentation_graphics_sequence_lua --> runtime_presentation_graphics_compute_pipeline_lua
@@ -140,8 +134,6 @@ flowchart LR
     runtime_presentation_graphics_sequence_lua --> runtime_services_memory_memory_lua
     runtime_presentation_graphics_sequence_lua --> ssot_config_gfx_lua
     runtime_presentation_graphics_sequence_lua --> ssot_config_sim_lua
-    runtime_presentation_translation_render_queue_lua --> bit
-    runtime_presentation_translation_render_queue_lua --> ffi
     runtime_presentation_translation_render_queue_lua --> runtime_boot_engine_api_lua
     runtime_presentation_translation_render_queue_lua --> runtime_presentation_translation_pipeline_manifest_lua
     runtime_presentation_translation_render_queue_lua --> runtime_services_math_fixed_math_lua
