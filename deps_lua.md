@@ -1,5 +1,6 @@
 ```mermaid
-graph TD
+%%{init: {"flowchart": {"defaultRenderer": "elk"}}}%%
+flowchart LR
     %% WeaverEngine Lua Dependencies
     subgraph build
         build_ctx_build_lua["build/ctx_build.lua"]
