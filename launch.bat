@@ -51,8 +51,7 @@ set TARGET_SIZE=%~2
 if "%TARGET_SIZE%"=="" set TARGET_SIZE=8
 echo [SWARM] Booting Graphical Host Node (Size: %TARGET_SIZE%)...
 start "Weaver Host" /B cmd /c "bin\boot.exe host %TARGET_SIZE% > logs\host.log 2>&1"
-echo [SWARM] Tailing logs\host.log...
-powershell -command "Get-Content logs\host.log -Wait"
+echo [SWARM] Host running in background.
 exit /b 0
 
 :client
@@ -129,6 +128,5 @@ if %BOT_CLIENTS% GTR 0 (
     )
 )
 
-echo [SWARM] Synchronization active. Tailing host heartbeat...
-powershell -command "Get-Content logs\host.log -Wait"
+echo [SWARM] All nodes launched and running in the background.
 exit /b 0

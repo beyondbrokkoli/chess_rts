@@ -40,7 +40,7 @@ case $COMMAND in
         TARGET_SIZE=${2:-8}
         echo "[SWARM] Booting Graphical Host Node (Size: $TARGET_SIZE)..."
         ./bin/boot$BIN_EXT host "$TARGET_SIZE" > logs/host.log 2>&1 &
-        tail -f logs/host.log
+        echo "[SWARM] Host running in background."
         ;;
 
     client)
@@ -103,17 +103,7 @@ case $COMMAND in
             ((CLIENT_IDX++))
         done
 
-        echo "[SWARM] Synchronization active. Tailing host heartbeat..."
-        tail -f logs/host.log &
-        TAIL_PID=$!
-
-        echo "[SWARM] Waiting for manual node shutdown..."
-        for pid in "${SWARM_PIDS[@]}"; do
-            wait $pid
-        done
-
-        echo "[SWARM] All squad nodes have shut down gracefully!"
-        kill $TAIL_PID 2>/dev/null
+        echo "[SWARM] All nodes launched and running in the background."
         ;;
 
     *)
