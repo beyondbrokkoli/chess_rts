@@ -51,7 +51,13 @@ def generate_mermaid(graph):
         group = node.split('/')[0] if '/' in node else 'external'
         groups[group].append(node)
 
-    lines = ["```mermaid", "graph TD", "    %% WeaverEngine GLSL Dependencies"]
+    # Inject ELK layout renderer and horizontal flow
+    lines = [
+        "```mermaid",
+        '%%{init: {"flowchart": {"defaultRenderer": "elk"}}}%%',
+        "flowchart LR",
+        "    %% WeaverEngine GLSL Dependencies"
+    ]
 
     for group, nodes in sorted(groups.items()):
         lines.append(f"    subgraph {group}")

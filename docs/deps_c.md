@@ -1,5 +1,6 @@
 ```mermaid
-graph TD
+%%{init: {"flowchart": {"defaultRenderer": "elk"}}}%%
+flowchart LR
     %% WeaverEngine C Dependencies
     subgraph generated
         generated_ssot_render_h["generated/ssot_render.h"]

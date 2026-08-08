@@ -6,6 +6,9 @@ ROOT_LUA_FILES = []
 LUA_DIRS = ["build", "ssot", "runtime", "network", "worlds", "tools"]
 REQUIRE_PATTERN = re.compile(r"require\s*(?:\(\s*['\"]([^'\"]+)['\"]\s*\)|['\"]([^'\"]+)['\"])")
 
+# Blacklist to strip ubiquitous utilities and reduce graph clutter
+BLACKLIST = {"dkjson", "ffi", "math", "bit", "debug", "lpeg"}
+
 def sanitize_id(filepath):
     return re.sub(r'[^a-zA-Z0-9_]', '_', filepath)
 
@@ -14,14 +17,11 @@ def scan_dependencies():
 
     def index_file(filepath):
         rel_path = os.path.relpath(filepath).replace("\\", "/")
-        # Index by basename (e.g. 'main' -> 'host/boot/main.lua')
         base = os.path.splitext(os.path.basename(rel_path))[0]
         file_map[base] = rel_path
-        # Index by Lua namespace (e.g. 'runtime.boot.main' -> 'runtime/boot/main.lua')
         dot_path = os.path.splitext(rel_path)[0].replace("/", ".")
         file_map[dot_path] = rel_path
 
-    # Pass 1: Build the Lua resolution index
     for root_file in ROOT_LUA_FILES:
         if os.path.exists(root_file):
             index_file(root_file)
@@ -45,11 +45,21 @@ def scan_dependencies():
                 if line.lstrip().startswith("--"): continue
                 for match in REQUIRE_PATTERN.findall(line):
                     req = match[0] if match[0] else match[1]
-                    # Map 'build.task_headless' -> 'build/task_headless.lua'. System libs like 'ffi' bypass this.
                     resolved_path = file_map.get(req, req)
+
+                    # Extract just the file/module name to safely check against the blacklist
+                    module_name = os.path.basename(resolved_path).replace(".lua", "")
+
+                    # 1. Skip if explicitly blacklisted
+                    if req in BLACKLIST or module_name in BLACKLIST:
+                        continue
+
+                    # 2. Skip anything that doesn't have a path separator to permanently drop the 'external' block
+                    if '/' not in resolved_path:
+                        continue
+
                     graph[rel_path].append(resolved_path)
 
-    # Pass 2: Extract dependencies
     for root_file in ROOT_LUA_FILES:
         if os.path.exists(root_file):
             parse_file(root_file)
@@ -70,13 +80,20 @@ def generate_mermaid(graph):
 
     groups = defaultdict(list)
     for node in all_nodes:
-        # Builtin lua libs like 'ffi', 'bit' won't have slashes. Isolate them to 'external'.
+        # Externals are already filtered out, so everything here will have a '/'
         group = node.split('/')[0] if '/' in node else 'external'
         groups[group].append(node)
 
-    lines = ["```mermaid", "graph TD", "    %% WeaverEngine Lua Dependencies"]
+    # Inject ELK layout renderer and horizontal flow
+    lines = [
+        "```mermaid",
+        '%%{init: {"flowchart": {"defaultRenderer": "elk"}}}%%',
+        "flowchart LR",
+        "    %% WeaverEngine Lua Dependencies"
+    ]
 
     for group, nodes in sorted(groups.items()):
+        if group == 'external': continue # Extra safety net
         lines.append(f"    subgraph {group}")
         for node in sorted(nodes):
             lines.append(f'        {sanitize_id(node)}["{node}"]')

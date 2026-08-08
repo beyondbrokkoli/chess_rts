@@ -1,5 +1,6 @@
 ```mermaid
-graph TD
+%%{init: {"flowchart": {"defaultRenderer": "elk"}}}%%
+flowchart LR
     %% WeaverEngine GLSL Dependencies
     subgraph generated
         generated_registry_glsl["generated/registry.glsl"]
