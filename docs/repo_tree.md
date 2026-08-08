@@ -8,14 +8,14 @@ flowchart LR
     %% Vendored/Generated File Styling (Amber, Dashed)
     classDef special fill:#0f172a,stroke:#f59e0b,stroke-width:1px,stroke-dasharray: 4 4,color:#94a3b8
 
-    root["📁 chess_rts"]
+    root["📁 demo_engine"]
     node_bin["📁 bin"]
     node_build["📁 build"]
     node_docs["📁 docs"]
     node_generated["📁 generated"]
     node_host["📁 host"]
-    node_logs["📁 logs"]
     node_network["📁 network"]
+    node_rag["📁 rag"]
     node_render["📁 render"]
     node_runtime["📁 runtime"]
     node_server["📁 server"]
@@ -73,6 +73,10 @@ flowchart LR
     node_docs_deps_c_md["📄 deps_c.md"]
     node_docs_deps_glsl_md["📄 deps_glsl.md"]
     node_docs_deps_lua_md["📄 deps_lua.md"]
+    node_docs_repo_ascii_txt["📄 repo_ascii.txt"]
+    node_docs_repo_tree_md["📄 repo_tree.md"]
+    node_rag_ask_py["📄 ask.py"]
+    node_rag_ingest_codebase_py["📄 ingest_codebase.py"]
     node_runtime_boot["📁 boot"]
     node_runtime_presentation["📁 presentation"]
     node_runtime_services["📁 services"]
@@ -129,8 +133,10 @@ flowchart LR
     node_network_transport_net_pump_lua["📄 net_pump.lua"]
     node_network_transport_network_lua["📄 network.lua"]
     node_network_transport_vx_net_c["📄 vx_net.c"]
+    node_tools_ascii_tree_cols_py["📄 ascii_tree_cols.py"]
     node_tools_bot_lua["📄 bot.lua"]
     node_tools_login_test_sh["📄 login_test.sh"]
+    node_tools_parse_py["📄 parse.py"]
     node_tools_trace_deps_c_py["📄 trace_deps_c.py"]
     node_tools_trace_deps_glsl_py["📄 trace_deps_glsl.py"]
     node_tools_trace_deps_lua_py["📄 trace_deps_lua.py"]
@@ -171,8 +177,8 @@ flowchart LR
     root --> node_docs
     root --> node_generated
     root --> node_host
-    root --> node_logs
     root --> node_network
+    root --> node_rag
     root --> node_render
     root --> node_runtime
     root --> node_server
@@ -230,6 +236,10 @@ flowchart LR
     node_docs --> node_docs_deps_c_md
     node_docs --> node_docs_deps_glsl_md
     node_docs --> node_docs_deps_lua_md
+    node_docs --> node_docs_repo_ascii_txt
+    node_docs --> node_docs_repo_tree_md
+    node_rag --> node_rag_ask_py
+    node_rag --> node_rag_ingest_codebase_py
     node_runtime --> node_runtime_boot
     node_runtime --> node_runtime_presentation
     node_runtime --> node_runtime_services
@@ -286,8 +296,10 @@ flowchart LR
     node_network_transport --> node_network_transport_net_pump_lua
     node_network_transport --> node_network_transport_network_lua
     node_network_transport --> node_network_transport_vx_net_c
+    node_tools --> node_tools_ascii_tree_cols_py
     node_tools --> node_tools_bot_lua
     node_tools --> node_tools_login_test_sh
+    node_tools --> node_tools_parse_py
     node_tools --> node_tools_trace_deps_c_py
     node_tools --> node_tools_trace_deps_glsl_py
     node_tools --> node_tools_trace_deps_lua_py
@@ -329,8 +341,8 @@ flowchart LR
     class node_docs dir
     class node_generated dir
     class node_host dir
-    class node_logs dir
     class node_network dir
+    class node_rag dir
     class node_render dir
     class node_runtime dir
     class node_server dir
@@ -388,6 +400,10 @@ flowchart LR
     class node_docs_deps_c_md file
     class node_docs_deps_glsl_md file
     class node_docs_deps_lua_md file
+    class node_docs_repo_ascii_txt file
+    class node_docs_repo_tree_md file
+    class node_rag_ask_py file
+    class node_rag_ingest_codebase_py file
     class node_runtime_boot dir
     class node_runtime_presentation dir
     class node_runtime_services dir
@@ -444,8 +460,10 @@ flowchart LR
     class node_network_transport_net_pump_lua file
     class node_network_transport_network_lua file
     class node_network_transport_vx_net_c file
+    class node_tools_ascii_tree_cols_py file
     class node_tools_bot_lua file
     class node_tools_login_test_sh file
+    class node_tools_parse_py file
     class node_tools_trace_deps_c_py file
     class node_tools_trace_deps_glsl_py file
     class node_tools_trace_deps_lua_py file
