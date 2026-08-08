@@ -93,15 +93,9 @@ flowchart LR
     network_session_netcode_lua --> network_transport_network_lua
     network_session_netcode_lua --> runtime_boot_path_weaver_lua
     network_session_netcode_lua --> worlds_chess_plugin_lua
-    network_transport_net_pump_lua --> ffi
     network_transport_net_pump_lua --> network_lockstep_history_buffer_lua
     network_transport_net_pump_lua --> network_lockstep_wire_codec_lua
     network_transport_net_pump_lua --> network_transport_network_lua
-    network_transport_network_lua --> ffi
-    runtime_boot_core_abi_lua --> ffi
-    runtime_boot_engine_api_lua --> ffi
-    runtime_boot_main_lua --> ffi
-    runtime_boot_main_lua --> math
     runtime_boot_main_lua --> network_session_netcode_lua
     runtime_boot_main_lua --> runtime_boot_core_abi_lua
     runtime_boot_main_lua --> runtime_boot_engine_api_lua
