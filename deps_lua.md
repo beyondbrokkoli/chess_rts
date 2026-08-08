@@ -81,7 +81,6 @@ flowchart LR
     network_lockstep_fsm_core_lua --> network_lockstep_fsm_simulator_lua
     network_lockstep_fsm_simulator_lua --> network_protocol_structs_lua
     network_protocol_config_net_lua --> network_protocol_structs_lua
-    network_protocol_json_util_lua --> network_protocol_dkjson_luai
     network_session_net_utils_lua --> network_protocol_config_net_lua
     network_session_net_utils_lua --> network_protocol_json_util_lua
     network_session_net_utils_lua --> network_transport_network_lua
