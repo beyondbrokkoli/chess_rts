@@ -1,3 +1,5 @@
+### DEMO ENGINE
+
 Whether you are on Linux (`./launch.sh`) or Windows (`launch.bat`), the syntax is identical.
 
 | Command | Syntax | Description |
