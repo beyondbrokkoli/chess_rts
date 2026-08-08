@@ -11,13 +11,6 @@ flowchart LR
         build_task_invariants_lua["build/task_invariants.lua"]
         build_task_shaders_lua["build/task_shaders.lua"]
     end
-    subgraph external
-        bit["bit"]
-        debug["debug"]
-        ffi["ffi"]
-        lpeg["lpeg"]
-        math["math"]
-    end
     subgraph network
         network_lockstep_fsm_core_lua["network/lockstep/fsm_core.lua"]
         network_lockstep_fsm_pacing_lua["network/lockstep/fsm_pacing.lua"]
