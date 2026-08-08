@@ -1,4 +1,3 @@
--- launch.lua
 local ffi = require("ffi")
 local target = arg[1]
 
@@ -10,7 +9,22 @@ end
 local launcher = target == "linux" and "./launch.sh" or "launch.bat"
 
 if target == "win" then
-    ffi.cdef[[ int _getch(void); ]]
+    ffi.cdef[[
+        int _getch(void);
+        void Sleep(uint32_t dwMilliseconds);
+    ]]
+else
+    ffi.cdef[[
+        int usleep(unsigned int usec);
+    ]]
+end
+
+local function sleep_ms(ms)
+    if target == "win" then
+        ffi.C.Sleep(ms)
+    else
+        ffi.C.usleep(ms * 1000)
+    end
 end
 
 local function check_orphans()
@@ -132,6 +146,33 @@ local function read_line()
     end
 end
 
+local function await_lobby_id()
+    print("[CLI] Awaiting Matchmaker LOBBY_ID...")
+    local max_attempts = 50 -- 5 seconds (50 * 100ms)
+    local attempts = 0
+
+    while attempts < max_attempts do
+        local f = io.open("logs/host.log", "r")
+        if f then
+            for line in f:lines() do
+                -- Look for the string and grab the ID following it
+                local lobby_id = line:match("LOBBY_ID:%s*(%S+)")
+                if lobby_id then
+                    f:close()
+                    print("\n========================================")
+                    print(" >> ACTIVE LOBBY ID: " .. lobby_id)
+                    print("========================================\n")
+                    return lobby_id
+                end
+            end
+            f:close()
+        end
+        sleep_ms(100)
+        attempts = attempts + 1
+    end
+    print("[CLI] Timed out waiting for LOBBY_ID. Check logs/host.log manually.")
+end
+
 -- Safely wrap os.execute so child processes don't inherit the raw terminal state
 local function run_shell_cmd(cmd)
     if target == "linux" then os.execute("stty sane") end -- Restore cooked mode
@@ -139,9 +180,7 @@ local function run_shell_cmd(cmd)
     if target == "linux" then os.execute("stty cbreak -echo") end -- Re-enter raw mode
 end
 
--- ==========================================
 -- ORCHESTRATOR LOOP
--- ==========================================
 local function main_loop()
     print("=======================================================")
     print(" Weaver CLI Orchestrator (Lua V2 - Raw Mode)")
@@ -173,9 +212,19 @@ local function main_loop()
             print("[CLI] Issuing sweep command...")
             run_shell_cmd(launcher .. " clean")
         elseif cmd == "swarm" or cmd == "lab" or cmd == "host" or cmd == "client" or cmd == "attach" then
+            -- Delete old log to ensure we don't fetch a stale Lobby ID
+            if cmd == "swarm" or cmd == "lab" or cmd == "host" then
+                os.remove("logs/host.log")
+            end
+
             local full_cmd = launcher .. " " .. input
             print("[CLI] Executing: " .. full_cmd)
             run_shell_cmd(full_cmd)
+
+            -- Automatically catch and print the newly generated Lobby ID
+            if cmd == "swarm" or cmd == "lab" or cmd == "host" then
+                await_lobby_id()
+            end
         elseif cmd ~= nil and cmd ~= "" then
             print("[CLI] Unknown command: " .. cmd)
         end
