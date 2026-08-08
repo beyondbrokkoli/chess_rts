@@ -1,5 +1,7 @@
 -- launch.lua
+local ffi = require("ffi")
 local target = arg[1]
+
 if target ~= "linux" and target ~= "win" then
     print("[FATAL] Usage: luajit launch.lua <linux|win>")
     os.exit(1)
@@ -7,12 +9,15 @@ end
 
 local launcher = target == "linux" and "./launch.sh" or "launch.bat"
 
+if target == "win" then
+    ffi.cdef[[ int _getch(void); ]]
+end
+
 local function check_orphans()
     print("\n[ORPHANS] Scanning for active Weaver nodes...")
     local count = 0
 
     if target == "linux" then
-        -- Use pgrep to find full command lines matching our binaries
         local f = io.popen("pgrep -a -f 'boot.*\\.elf'")
         if f then
             for line in f:lines() do
@@ -22,11 +27,9 @@ local function check_orphans()
             f:close()
         end
     else
-        -- Use tasklist on Windows, filtering for our binaries
         local f = io.popen('tasklist 2>nul | findstr /I "boot.exe boot_headless.exe"')
         if f then
             for line in f:lines() do
-                -- Strip excessive whitespace for a cleaner output
                 print("  |- " .. line:gsub("%s+", " "))
                 count = count + 1
             end
@@ -42,45 +45,149 @@ local function check_orphans()
     print("")
 end
 
-print("=======================================================")
-print(" Weaver CLI Orchestrator (Lua V1)")
-print(" Platform: " .. string.upper(target))
-print(" Commands: swarm, lab, host, client, attach")
-print("           clean, orphans, exit")
-print("=======================================================\n")
+-- RAW INPUT & HISTORY BUFFERING
+local cmd_history = {}
 
--- Main CLI Loop
-while true do
+local function read_line()
+    local buf = ""
+    local hist_idx = #cmd_history + 1
+
     io.write("weaver> ")
-    local input = io.read()
+    io.flush()
 
-    -- Handle EOF (Ctrl+D / Ctrl+C)
-    if not input then
-        print("\n[CLI] EOF detected.")
-        check_orphans()
-        break
+    while true do
+        local c = ""
+
+        if target == "win" then
+            local code = ffi.C._getch()
+            if code == 224 or code == 0 then -- Windows special key prefix
+                local ext = ffi.C._getch()
+                if ext == 72 then c = "UP"
+                elseif ext == 80 then c = "DOWN"
+                else c = "IGNORE" end
+            elseif code == 13 then c = "ENTER"
+            elseif code == 8 then c = "BACKSPACE"
+            elseif code == 3 then c = "CTRLC"
+            else c = string.char(code) end
+        else
+            -- Linux raw byte reading
+            local char = io.read(1)
+            if not char then c = "EOF"
+            elseif char == "\n" then c = "ENTER"
+            elseif char == "\127" or char == "\8" then c = "BACKSPACE"
+            elseif char == "\3" then c = "CTRLC"
+            elseif char == "\27" then
+                -- Intercept ANSI Escape Sequence (e.g., \27[A)
+                local b = io.read(1)
+                if b == "[" then
+                    local d = io.read(1)
+                    if d == "A" then c = "UP"
+                    elseif d == "B" then c = "DOWN"
+                    elseif d == "C" or d == "D" then c = "IGNORE" -- Swallow Left/Right!
+                    else c = "IGNORE" end
+                else c = "IGNORE" end
+            else c = char end
+        end
+
+        -- State Machine for our intercepted inputs
+        if c == "EOF" or c == "CTRLC" then
+            return nil
+        elseif c == "ENTER" then
+            io.write("\n")
+            if buf ~= "" and cmd_history[#cmd_history] ~= buf then
+                table.insert(cmd_history, buf) -- Save to history
+            end
+            return buf
+        elseif c == "BACKSPACE" then
+            if #buf > 0 then
+                buf = buf:sub(1, -2)
+                -- \r goes to start of line, \27[K clears to end of line
+                io.write("\r\27[Kweaver> " .. buf)
+                io.flush()
+            end
+        elseif c == "UP" then
+            if hist_idx > 1 then
+                hist_idx = hist_idx - 1
+                buf = cmd_history[hist_idx]
+                io.write("\r\27[Kweaver> " .. buf)
+                io.flush()
+            end
+        elseif c == "DOWN" then
+            if hist_idx < #cmd_history then
+                hist_idx = hist_idx + 1
+                buf = cmd_history[hist_idx]
+                io.write("\r\27[Kweaver> " .. buf)
+                io.flush()
+            elseif hist_idx == #cmd_history then
+                hist_idx = #cmd_history + 1
+                buf = ""
+                io.write("\r\27[Kweaver> " .. buf)
+                io.flush()
+            end
+        elseif c ~= "IGNORE" then
+            buf = buf .. c
+            io.write(c) -- Manually echo the character
+            io.flush()
+        end
     end
+end
 
-    -- Parse input into arguments
-    local args = {}
-    for w in input:gmatch("%S+") do table.insert(args, w) end
-    local cmd = args[1]
+-- Safely wrap os.execute so child processes don't inherit the raw terminal state
+local function run_shell_cmd(cmd)
+    if target == "linux" then os.execute("stty sane") end -- Restore cooked mode
+    os.execute(cmd)
+    if target == "linux" then os.execute("stty cbreak -echo") end -- Re-enter raw mode
+end
 
-    if cmd == "exit" or cmd == "quit" then
-        check_orphans()
-        print("[CLI] Exiting Weaver Orchestrator. Goodbye!")
-        break
-    elseif cmd == "orphans" or cmd == "status" then
-        check_orphans()
-    elseif cmd == "clean" then
-        print("[CLI] Issuing sweep command...")
-        os.execute(launcher .. " clean")
-    elseif cmd == "swarm" or cmd == "lab" or cmd == "host" or cmd == "client" or cmd == "attach" then
-        -- Forward valid commands straight to the shell wrapper
-        local full_cmd = launcher .. " " .. input
-        print("[CLI] Executing: " .. full_cmd)
-        os.execute(full_cmd)
-    elseif cmd ~= nil and cmd ~= "" then
-        print("[CLI] Unknown command: " .. cmd)
+-- ==========================================
+-- ORCHESTRATOR LOOP
+-- ==========================================
+local function main_loop()
+    print("=======================================================")
+    print(" Weaver CLI Orchestrator (Lua V2 - Raw Mode)")
+    print(" Platform: " .. string.upper(target))
+    print(" Commands: swarm, lab, host, client, attach")
+    print("           clean, orphans, exit")
+    print("=======================================================\n")
+
+    while true do
+        local input = read_line()
+
+        if not input then
+            print("\n[CLI] EOF/Ctrl+C detected.")
+            check_orphans()
+            break
+        end
+
+        local args = {}
+        for w in input:gmatch("%S+") do table.insert(args, w) end
+        local cmd = args[1]
+
+        if cmd == "exit" or cmd == "quit" then
+            check_orphans()
+            print("[CLI] Exiting Weaver Orchestrator. Goodbye!")
+            break
+        elseif cmd == "orphans" or cmd == "status" then
+            check_orphans()
+        elseif cmd == "clean" then
+            print("[CLI] Issuing sweep command...")
+            run_shell_cmd(launcher .. " clean")
+        elseif cmd == "swarm" or cmd == "lab" or cmd == "host" or cmd == "client" or cmd == "attach" then
+            local full_cmd = launcher .. " " .. input
+            print("[CLI] Executing: " .. full_cmd)
+            run_shell_cmd(full_cmd)
+        elseif cmd ~= nil and cmd ~= "" then
+            print("[CLI] Unknown command: " .. cmd)
+        end
     end
+end
+
+-- Safely execute the loop. If a Lua crash happens, pcall catches it
+-- so we can restore the user's terminal before throwing the error.
+if target == "linux" then os.execute("stty cbreak -echo") end
+local status, err = pcall(main_loop)
+if target == "linux" then os.execute("stty sane") end
+
+if not status then
+    print("\n[FATAL ERROR] " .. tostring(err))
 end
